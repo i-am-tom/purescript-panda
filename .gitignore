@@ -1,0 +1,8 @@
+.psc-ide-port
+.purs-repl
+package-lock.json
+.psc-package
+.pulp-cache
+node_modules
+output
+

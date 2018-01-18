@@ -1,0 +1,15 @@
+{
+    "name": "purescript-panda",
+    "set": "psc-0.11.7",
+    "source": "https://github.com/purescript/package-sets.git",
+    "depends": [
+        "profunctor-lenses",
+        "behaviors",
+        "dom",
+        "foreign",
+        "prelude",
+        "psci-support",
+        "console",
+        "eff"
+    ]
+}
