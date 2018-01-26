@@ -1,81 +1,34 @@
 module Panda where
 
+--import Panda.Event          as Event
+--import Panda.HTML           as HTML
+--import Panda.Internal.Types as Types
 
--- The Elm architecture, reimagined without a virtual DOM.
-
-
--- An endomorphism.
-
-type Endo a = a → a
+--import Data.Monoid.Endo     (Endo)
 
 
----
-
-
--- Given a config and a mounting point, we can produce a view that is wired to
--- the subscription.
-
+bootstrap
+  ∷ ∀ update state event eff
+  . Application update state event
+      → Eff eff { handle  ∷ update → Eff eff Unit
+                , events  ∷ Event event
+                , element ∷ Element
+                }
 --runAppIn
---  ∷ ∀ eff
---  . Endo (Config eff)
+--  ∷ ∀ update state event
+--  . Endo (Application update state event)
 --  → Element
---  → Eff (dom ∷ DOM | eff) Unit
+--  → Eff (dom ∷ DOM, frp ∷ FRP | eff) Unit
 --
---runAppIn element configurer
---  = HTML.renderTo element (view initialState) >>= \{ listener, onEvent } →
---      Event.subscribe listener (subscription <|> map update onEvent)
+--runAppIn element (Endo configurer)
+--  = HTML.renderTo element view >>= \{ listener, events } →
+--      Event.subscribe listener (Event.loop update subscription events)
 --
 --  where
---    { view, subscription, update, initialState }
+--    { view, subscription, update }
 --      = configurer
 --          { view:         fragment []
 --          , subscription: zero
---          , update:       \_ _ → mempty
---          , init:         unit
+--          , update:       mempty
 --          }
 
-
----
-
-
--- We can wire up the entire body!
-
---runApp
---  ∷ ∀ eff
---  . Endo (Config eff)
---  → Eff (dom ∷ DOM | eff) Unit
---
---runApp configurer = do
---  document ← DOM.document
---  body ← DOM.body
---
---  maybe
---    (runAppIn configurer)
---    (Console.error "Couldn't find the DOM!")
---    body
-
-
----
-
-
--- We don't really need to write much purescript at all...
-
---type ForeignConfig eff
---  = ∀ event state
---  . { subscription ∷ Event event eff
---    , update       ∷ state → Foreign → event
---    }
-
-
---runAppOn
---  ∷ Endo (ForeignConfig eff)
---  → Element
---  → Eff (dom ∷ DOM | eff) Unit
-
---runAppOn configurer element
---  = HTML.readFrom element >>= \{ listener, onEvent } →
---      animate listener (subscription <|> map update onEvent)
-
---  where
---    { subscription, update }
---        = configurer defaultConfiguration
