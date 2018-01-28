@@ -7,13 +7,6 @@ module Panda where
 --import Data.Monoid.Endo     (Endo)
 
 
-bootstrap
-  ∷ ∀ update state event eff
-  . Application update state event
-      → Eff eff { handle  ∷ update → Eff eff Unit
-                , events  ∷ Event event
-                , element ∷ Element
-                }
 --runAppIn
 --  ∷ ∀ update state event
 --  . Endo (Application update state event)

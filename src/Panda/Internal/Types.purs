@@ -1,6 +1,7 @@
 module Panda.Internal.Types where
 
-import Data.Lens    (APrism')
+import Data.Lazy    (Lazy)
+import Data.Lens    (ALens')
 import FRP.Event    (Event)
 import Util.Exists2 (Exists2)
 
@@ -12,8 +13,8 @@ type PropertyStatic
 
 
 type PropertyWatcher update state event
-  = { update :: update
-    , state  :: state
+  = { update ∷ update
+    , state  ∷ state
     }
   → { interest ∷ Boolean
     , render ∷ Lazy (Property update state event)
@@ -32,29 +33,33 @@ data Property update state event
   | PProducer (PropertyProducer              event)
 
 
-type ComponentStatic update state event
-  = { children   ∷ Array (Component update state event)
-    , properties ∷ Array (Property  update state event)
-    , tagName    ∷ String
-    }
+newtype ComponentStatic update state event
+  = ComponentStatic
+      { children   ∷ Array (Component update state event)
+      , properties ∷ Array (Property  update state event)
+      , tagName    ∷ String
+      }
 
 
-type ComponentWatcher update state event
-  = { update ∷ update
-    , state  ∷ state
-    }
-  → { interest ∷ Boolean
-    , renderer ∷ Lazy (Component update state event)
-    }
+newtype ComponentWatcher update state event
+  = ComponentWatcher
+      ( { update ∷ update
+        , state  ∷ state
+        }
+      → { interest ∷ Boolean
+        , renderer ∷ Lazy (Component update state event)
+        }
+      )
 
 
-type ComponentDelegate update state event subupdate substate
-  = { delegate ∷ Application subupdate substate event
-    , focus
-        ∷ { update ∷ APrism' update subupdate
-          , state  ∷ APrism' state substate
-          }
-    }
+newtype ComponentDelegate update state event subupdate substate
+  = ComponentDelegate
+      { delegate ∷ Application subupdate substate event
+      , focus
+          ∷ { update ∷ ALens' update subupdate
+            , state  ∷ ALens' state substate
+            }
+      }
 
 
 data Component update state event
