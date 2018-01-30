@@ -1,7 +1,7 @@
 module Panda.Bootstrap where
 
 import Panda.Internal.Types (Application, Component(..), ComponentDelegate(..), ComponentStatic(..), ComponentWatcher(..))
-import Util.Exists2 (runExists2)
+import Util.Exists3 (runExists3)
 import Control.Alt ((<|>))
 import Control.Apply (lift2)
 import Control.Monad.Eff (Eff)
@@ -43,7 +43,6 @@ bootstrap document { view, subscription, update }
         , element
         }
 
-
 render
   ∷ ∀ update state event eff
   . Document
@@ -53,18 +52,18 @@ render
           ∷ { update ∷ update
             , state  ∷ state
             }
-          → Eff eff Unit
+          → Eff eff (Eff eff Unit)
       , events   ∷ FRP.Event event
       , element  ∷ Node
       }
 
-render document
+render document updateListener
   = case _ of
-      CText text → do
+      CText text what → do
         element ← createTextNode text document
 
         pure
-          { onUpdate: const (pure unit)
+          { onUpdate: mempty
           , events:   empty
           , element:  textToNode element
           }
@@ -87,7 +86,7 @@ render document
 
           initial
             = pure
-                { onUpdate: pure (pure mempty)
+                { onUpdate: mempty
                 , events:   empty
                 }
 
@@ -96,7 +95,7 @@ render document
 
       CDelegate delegateE →
         let
-          process = runExists2 \(ComponentDelegate { delegate, focus }) → do
+          process = runExists3 \(ComponentDelegate { delegate, focus }) → do
             { events, element, onUpdate } ← bootstrap document delegate
 
             let
@@ -119,9 +118,30 @@ render document
         fragment ← map documentFragmentToNode
                      (createDocumentFragment document)
 
+        { event, push } <- Event.create
+
         pure
-          { onUpdate: undefined
-          , events:   undefined
+          { onUpdate: \update -> do
+              let { interest, renderer } = listener update
+
+              if interest
+                then do
+                  { onUpdate, events, element } <- render (renderer update)
+
+                  cancelInput <- subscribe events push
+                  cancelOutput <- subscribe updateListener onUpdate
+
+                  -- TODO: `replace` function in purescript-dom?
+                  deleteAllNodesFrom fragment
+                  element `appendTo` fragment
+
+                  pure do
+                    cancelInput
+                    cancelOutput
+
+                else mempty
+
+          , events:   event
           , element:  fragment
           }
 

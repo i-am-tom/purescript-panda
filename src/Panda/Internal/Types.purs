@@ -3,7 +3,7 @@ module Panda.Internal.Types where
 import Data.Lazy    (Lazy)
 import Data.Lens    (ALens')
 import FRP.Event    (Event)
-import Util.Exists2 (Exists2)
+import Util.Exists  (Exists3)
 
 
 type PropertyStatic
@@ -52,12 +52,13 @@ newtype ComponentWatcher update state event
       )
 
 
-newtype ComponentDelegate update state event subupdate substate
+newtype ComponentDelegate update state event subupdate substate subevent
   = ComponentDelegate
-      { delegate ∷ Application subupdate substate event
+      { delegate ∷ Application subupdate substate subevent
       , focus
-          ∷ { update ∷ ALens' update subupdate
+          ∷ { update ∷ update -> Maybe subupdate
             , state  ∷ ALens' state substate
+            , event  ∷ subevent -> event
             }
       }
 
@@ -65,7 +66,7 @@ newtype ComponentDelegate update state event subupdate substate
 data Component update state event
   = CStatic            (ComponentStatic   update state event)
   | CWatcher           (ComponentWatcher  update state event)
-  | CDelegate (Exists2 (ComponentDelegate update state event))
+  | CDelegate (Exists3 (ComponentDelegate update state event))
   | CText String
 
 
