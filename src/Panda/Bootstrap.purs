@@ -1,150 +1,186 @@
 module Panda.Bootstrap where
 
-import Panda.Internal.Types (Application, Component(..), ComponentDelegate(..), ComponentStatic(..), ComponentWatcher(..))
-import Util.Exists3 (runExists3)
 import Control.Alt ((<|>))
 import Control.Apply (lift2)
 import Control.Monad.Eff (Eff)
 import Control.Plus (empty)
+import DOM (DOM)
+import DOM.Node.Document (createDocumentFragment, createElement, createTextNode) as DOM
+import DOM.Node.Node (appendChild, firstChild, removeChild) as DOM
+import DOM.Node.Types (Document, Node, documentFragmentToNode, elementToNode, textToNode) as DOM
+import Data.Foldable (foldr)
+import Data.Lazy (force)
 import Data.Lens.Getter (view)
 import Data.Lens.Lens (cloneLens)
-import DOM (DOM)
-import DOM.Node.Document (createDocumentFragment, createElement, createTextNode)
-import DOM.Node.Node (appendChild)
-import DOM.Node.Types (Document, Node, documentFragmentToNode, elementToNode, textToNode)
-import Data.Foldable (foldr)
-import Data.Monoid (mempty)
-import Data.Record (insert)
-import Data.Symbol (SProxy(..))
-import FRP.Event (Event) as FRP
+import Data.Maybe (Maybe(..))
+import Data.Tuple (Tuple(..))
+import FRP (FRP)
+import FRP.Event (Event, subscribe) as FRP
+import FRP.Event.Class (mapAccum) as FRP
+import Panda.Event (create) as FRP
+import Panda.Internal.Types as Types
 import Unsafe.Coerce (unsafeCoerce)
+import Util.Exists (runExists3)
 
 import Prelude
 
 bootstrap
-  ∷ ∀ eff update state event
-  . Document
-  → Application update state event
-  → Eff (dom ∷ DOM | eff)
+  ∷ ∀ update state event
+  . DOM.Document
+  → Types.Application update state event
+  → Eff (dom :: DOM, frp :: FRP | _)
       { events   ∷ FRP.Event event
-      , element  ∷ Node
+      , element  ∷ DOM.Node
       , onUpdate
           ∷ { update ∷ update
             , state  ∷ state
             }
-          → Eff eff Unit
+          → Eff _ (Eff _ Unit)
       }
 
 bootstrap document { view, subscription, update }
-  = render document view >>= \{ element, events, onUpdate } →
+  = render document view >>= \{ element, events, onUpdate } → do
+      { event: updates, push } ← FRP.create
+
+      let
+        loop next state
+          = Tuple 
+              (Just step.state) 
+              { state:  step.state
+              , update: step.update
+              }
+          where 
+            step = update state next
+
+      cancel ← FRP.subscribe (FRP.mapAccum loop events Nothing) onUpdate 
+
       pure
-        { onUpdate: undefined
-        , events:   undefined
+        { onUpdate: \update → do
+            push update
+            pure (pure unit)
+
+        , events: events
         , element
         }
 
 render
-  ∷ ∀ update state event eff
-  . Document
-  → Component update state event
-  → Eff (dom ∷ DOM | eff)
+  ∷ ∀ update state event
+  . DOM.Document
+  → Types.Component update state event
+  → Eff (dom ∷ DOM, frp :: FRP | _)
       { onUpdate
           ∷ { update ∷ update
             , state  ∷ state
             }
-          → Eff eff (Eff eff Unit)
+          → Eff _ (Eff _ Unit)
       , events   ∷ FRP.Event event
-      , element  ∷ Node
+      , element  ∷ DOM.Node
       }
 
-render document updateListener
+render document
   = case _ of
-      CText text what → do
-        element ← createTextNode text document
+      Types.CText text → do
+        element ← DOM.createTextNode text document
 
         pure
-          { onUpdate: mempty
+          { onUpdate: \_ → pure (pure unit)
           , events:   empty
-          , element:  textToNode element
+          , element:  DOM.textToNode element
           }
 
-      CStatic (ComponentStatic { children, properties, tagName }) → do
-        parent ← createElement tagName document
+      Types.CStatic (Types.ComponentStatic { children, properties, tagName }) → do
+        parent ← DOM.createElement tagName document
 
         let
           prepare child = do
             { onUpdate, events, element } ← render document child
 
-            _ ← appendChild element (elementToNode parent)
+            _ ← DOM.appendChild element (DOM.elementToNode parent)
             pure { onUpdate, events }
 
           aggregate
             = lift2 \this that →
-                { onUpdate: lift2 (lift2 append) this.onUpdate that.onUpdate
-                , events:   this.events <|> that.events
+                { onUpdate: \update → do
+                    this' <- this.onUpdate update
+                    that' <- that.onUpdate update
+
+                    pure (this' *> that')
+                    
+                , events: this.events
+                      <|> that.events
                 }
 
           initial
             = pure
-                { onUpdate: mempty
+                { onUpdate: \_ → pure (pure unit)
                 , events:   empty
                 }
 
-        map (insert (SProxy ∷ SProxy "element") (elementToNode parent))
-            (foldr aggregate initial (map prepare children))
+        aggregated <- foldr aggregate initial (map prepare children)
 
-      CDelegate delegateE →
+        pure
+          { onUpdate: aggregated.onUpdate
+          , events:   aggregated.events
+          , element:  DOM.elementToNode parent
+          }
+
+      Types.CDelegate delegateE →
         let
-          process = runExists3 \(ComponentDelegate { delegate, focus }) → do
+          process = runExists3 \(Types.ComponentDelegate { delegate, focus }) → do
             { events, element, onUpdate } ← bootstrap document delegate
 
-            let
-              update' = cloneLens focus.update
-              state'  = cloneLens focus.state
+            let state' = cloneLens focus.state
 
             pure
               { onUpdate: \{ state, update } →
-                  onUpdate
-                    { update: view update' update
-                    , state:  view state'  state
-                    }
-              , events
+                  case focus.update update of
+                    Just subupdate ->
+                      onUpdate
+                        { update: subupdate
+                        , state:  view state' state
+                        }
+
+                    Nothing →
+                      pure (pure unit)
+
+              , events: map focus.event events
               , element
               }
 
         in process delegateE
 
-      CWatcher (ComponentWatcher listener) → do
-        fragment ← map documentFragmentToNode
-                     (createDocumentFragment document)
+      Types.CWatcher (Types.ComponentWatcher listener) → do
+        fragment ← map DOM.documentFragmentToNode
+                     (DOM.createDocumentFragment document)
 
-        { event, push } <- Event.create
+        { event: output, push: toOutput } ← FRP.create
 
         pure
-          { onUpdate: \update -> do
+          { onUpdate: \update → do
               let { interest, renderer } = listener update
 
               if interest
                 then do
-                  { onUpdate, events, element } <- render (renderer update)
+                  { onUpdate, events, element }
+                      ← render document (force renderer)
 
-                  cancelInput <- subscribe events push
-                  cancelOutput <- subscribe updateListener onUpdate
+                  firstChild ← DOM.firstChild fragment
 
-                  -- TODO: `replace` function in purescript-dom?
-                  deleteAllNodesFrom fragment
-                  element `appendTo` fragment
+                  case firstChild of
+                    Just elem -> do
+                      _ ← DOM.removeChild elem fragment
+                      pure unit
 
-                  pure do
-                    cancelInput
-                    cancelOutput
+                    Nothing ->
+                      pure unit
 
-                else mempty
+                  _ ← DOM.appendChild element fragment
 
-          , events:   event
-          , element:  fragment
+                  FRP.subscribe events toOutput
+
+                else pure (pure unit)
+
+          , events:  output
+          , element: fragment
           }
-
-undefined ∷ ∀ a. a
-undefined = unsafeCoerce unit
 

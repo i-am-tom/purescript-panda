@@ -1,9 +1,10 @@
 module Panda.Internal.Types where
 
-import Data.Lazy    (Lazy)
-import Data.Lens    (ALens')
-import FRP.Event    (Event)
-import Util.Exists  (Exists3)
+import Data.Lazy (Lazy)
+import Data.Lens (ALens')
+import Data.Maybe (Maybe)
+import FRP.Event (Event)
+import Util.Exists (Exists3)
 
 
 type PropertyStatic
@@ -73,6 +74,6 @@ data Component update state event
 type Application update state event
   = { view         ∷ Component update state event
     , subscription ∷ Event event
-    , update       ∷ state → event → { update ∷ update, state ∷ state }
+    , update       ∷ Maybe state → event → { update ∷ update, state ∷ state }
     }
 
