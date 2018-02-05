@@ -6,7 +6,7 @@ module Util.Exists
 
 import Unsafe.Coerce (unsafeCoerce)
 
-foreign import data Exists3 ∷ (Type → Type → Type -> Type) → Type
+foreign import data Exists3 ∷ (Type → Type → Type → Type) → Type
 
 mkExists3 ∷ ∀ f a b c. f a b c → Exists3 f
 mkExists3 = unsafeCoerce
