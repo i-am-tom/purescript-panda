@@ -1,32 +1,41 @@
 module Panda.Internal.Types where
 
+import Control.Monad.Eff (Eff)
 import Data.Lazy (Lazy)
-import Data.Lens (ALens')
 import Data.Maybe (Maybe)
-import FRP.Event (Event)
+import FRP.Event (Event) as FRP
 import Util.Exists (Exists3)
 
+import Prelude
 
-type PropertyStatic
-  = { key   ∷ String
-    , value ∷ String
-    }
+type Canceller eff = Eff eff Unit
 
+data Producer
+  = OnClick
 
-type PropertyWatcher update state event
-  = { update ∷ update
-    , state  ∷ state
-    }
-  → { interest ∷ Boolean
-    , render ∷ Lazy (Property update state event)
-    }
+newtype PropertyStatic
+  = PropertyStatic
+      { key   ∷ String
+      , value ∷ String
+      }
 
+newtype PropertyWatcher update state event
+  = PropertyWatcher
+  { key ∷ String
+  , listener ∷
+      { update ∷ update
+      , state  ∷ state
+      }
+    → { interest ∷ Boolean
+      , renderer ∷ Lazy (Property update state event)
+      }
+  }
 
-type PropertyProducer event
-  = { key   ∷ String
-    , event ∷ event
-    }
-
+newtype PropertyProducer event
+  = PropertyProducer
+      { key   ∷ Producer
+      , event ∷ event
+      }
 
 data Property update state event
   = PStatic    PropertyStatic
@@ -57,9 +66,9 @@ newtype ComponentDelegate update state event subupdate substate subevent
   = ComponentDelegate
       { delegate ∷ Application subupdate substate subevent
       , focus
-          ∷ { update ∷ update -> Maybe subupdate
-            , state  ∷ ALens' state substate
-            , event  ∷ subevent -> event
+          ∷ { update ∷ update → Maybe subupdate
+            , state  ∷ state → substate
+            , event  ∷ subevent → event
             }
       }
 
@@ -73,7 +82,8 @@ data Component update state event
 
 type Application update state event
   = { view         ∷ Component update state event
-    , subscription ∷ Event event
-    , update       ∷ Maybe state → event → { update ∷ update, state ∷ state }
+    , subscription ∷ FRP.Event event
+    , update       ∷ Maybe { state ∷ state, event ∷ event }
+                   → { update ∷ update, state ∷ state }
     }
 
