@@ -1,31 +1,32 @@
 module Panda.Bootstrap where
 
-import Control.Alt ((<|>))
-import Control.Apply (lift2)
-import Control.Monad.Eff (Eff)
-import Control.Plus (empty)
-import DOM.Node.Document (createDocumentFragment, createElement, createTextNode) as DOM
-import DOM.Node.Node (appendChild, firstChild, removeChild) as DOM
-import DOM.Node.Types (Document, Node, documentFragmentToNode, elementToNode, textToNode) as DOM
-import Data.Foldable (foldr, sequence_, traverse_)
-import Data.Lazy (force)
-import Data.Maybe (Maybe(..), isNothing)
-import Data.Tuple (Tuple(..))
-import FRP.Event (Event, subscribe) as FRP
-import FRP.Event.Class (mapAccum, withLast) as FRP
-import Panda.Event (create) as FRP
+import Control.Alt          ((<|>))
+import Control.Apply        (lift2)
+import Control.Monad.Eff    (Eff)
+import Control.Plus         (empty)
+import DOM.Node.Document    (createElement, createTextNode) as DOM
+import DOM.Node.Node        (appendChild, firstChild, removeChild) as DOM
+import DOM.Node.Types       (Document, Node, elementToNode, textToNode) as DOM
+import Data.Filterable      (filtered)
+import Data.Foldable        (foldr, sequence_, traverse_)
+import Data.Lazy            (force)
+import Data.Maybe           (Maybe(..), isNothing)
+import Data.Traversable     (sequence)
+import FRP.Event            (Event, subscribe) as FRP
+import FRP.Event.Class      (fold, withLast) as FRP
+import Panda.Event          (create) as FRP
 import Panda.Internal.Types as Types
-import Panda.Property as Property
-import Util.Exists (runExists3)
+import Panda.Property       as Property
+import Util.Exists          (runExists3)
 
 import Prelude
 
--- | Set up and kick off a Panda application.
-
+-- | Set up and kick off a Panda application. This creates the element tree,
+-- and ties the update handler to the event stream.
 bootstrap
   ∷ ∀ update state event
   . DOM.Document
-  → Types.Application update state event
+  → Types.Application _ update state event
   → Eff _
       { cancel ∷ Types.Canceller _
       , events ∷ FRP.Event event
@@ -41,14 +42,28 @@ bootstrap document { view, subscription, update } = do
   renderedPage ← render document view
 
   let
-    loop event previousState = Tuple (Just next.state) next
-      where next = update (map { state: _, event } previousState)
+    prepare ∷ event → Maybe state → Eff _ { update ∷ update, state ∷ state }
+    prepare event state = update (map { state: _, event } state)
 
-    events  = subscription <|> renderedPage.events
-    updates = FRP.mapAccum loop events Nothing
+    events ∷ FRP.Event event
+    events = subscription <|> renderedPage.events
 
-  cancelApplication
-    ← FRP.subscribe updates renderedPage.handleUpdate
+    -- Compute an update and new state based on an event.
+    loop
+      ∷ (Maybe state → Eff _ { update ∷ update, state ∷ state })
+      → Maybe (Eff _ { update ∷ update, state ∷ state })
+      → Maybe (Eff _ { update ∷ update, state ∷ state })
+    loop updater previous = Just do
+      last ← sequence previous
+      updater (map _.state last)
+
+    updates ∷ FRP.Event (Eff _ { update ∷ update, state ∷ state })
+    updates = filtered (FRP.fold loop (map prepare events) Nothing)
+
+    handleUpdate ∷ Eff _ { update ∷ update, state ∷ state } → Types.Canceller _
+    handleUpdate update' = update' >>= renderedPage.handleUpdate
+
+  cancelApplication ← FRP.subscribe updates handleUpdate
 
   pure renderedPage
     { cancel = renderedPage.cancel
@@ -58,7 +73,7 @@ bootstrap document { view, subscription, update } = do
 render
   ∷ ∀ update state event
   . DOM.Document
-  → Types.Component update state event
+  → Types.Component _ update state event
   → Eff _
       { cancel ∷ Types.Canceller _
       , events ∷ FRP.Event event
@@ -146,8 +161,7 @@ render document
         in process delegateE
 
       Types.CWatcher (Types.ComponentWatcher listener) → do
-        fragment ← map DOM.documentFragmentToNode
-                     (DOM.createDocumentFragment document)
+        parent ← map DOM.elementToNode (DOM.createElement "div" document)
 
         { event: output,     push: toOutput }          ← FRP.create
         { event: cancellers, push: registerCanceller } ← FRP.create
@@ -163,17 +177,17 @@ render document
               { cancel, element, events, handleUpdate }
                   ← render document (force renderer)
 
-              firstChild ← DOM.firstChild fragment
+              firstChild ← DOM.firstChild parent
 
               case firstChild of
                 Just elem → do
-                  _ ← DOM.removeChild elem fragment
+                  _ ← DOM.removeChild elem parent
                   pure unit
 
                 Nothing →
                   pure unit
 
-              _ ← DOM.appendChild element fragment
+              _ ← DOM.appendChild element parent
 
               cancelEvents ← FRP.subscribe events toOutput
               registerCanceller (cancel *> cancelEvents)
@@ -183,7 +197,7 @@ render document
         pure
           { cancel: registerCanceller (pure unit) *> cancelWatcher
           , events: output
-          , element: fragment
+          , element: parent
           , handleUpdate: updater <<< Just
           }
 

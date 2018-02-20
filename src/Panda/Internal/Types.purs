@@ -62,10 +62,10 @@ data Property update state event
 -- converted to HTML elements. Note that the children of a static component can
 -- absolutely be dynamic, and it can even have dynamic properties. All this
 -- represents is an HTML element.
-newtype ComponentStatic update state event
+newtype ComponentStatic eff update state event
   = ComponentStatic
-      { children   ∷ Array (Component update state event)
-      , properties ∷ Array (Property  update state event)
+      { children   ∷ Array (Component eff update state event)
+      , properties ∷ Array (Property      update state event)
       , tagName    ∷ String
       }
 
@@ -77,14 +77,14 @@ newtype ComponentStatic update state event
 -- won't be great. Similarly to the `PropertyWatcher`, the `interest` flag is
 -- an indication to the renderer: it may be ignored, as is the case in the
 -- initial render.
-newtype ComponentWatcher update state event
+newtype ComponentWatcher eff update state event
   = ComponentWatcher
       ( Maybe
           { update ∷ update
           , state  ∷ state
           }
       → { interest ∷ Boolean
-        , renderer ∷ Lazy (Component update state event)
+        , renderer ∷ Lazy (Component eff update state event)
         }
       )
 
@@ -93,9 +93,9 @@ newtype ComponentWatcher update state event
 -- existential, and are thus not carried up the tree: "as long as you can tell
 -- me how to convert updates and states for the child, and then 'unconvert'
 -- events from the child, I can embed this application".
-newtype ComponentDelegate update state event subupdate substate subevent
+newtype ComponentDelegate eff update state event subupdate substate subevent
   = ComponentDelegate
-      { delegate ∷ Application subupdate substate subevent
+      { delegate ∷ Application eff subupdate substate subevent
       , focus
           ∷ { update ∷ update → Maybe subupdate
             , state  ∷ state → substate
@@ -106,10 +106,10 @@ newtype ComponentDelegate update state event subupdate substate subevent
 
 -- | A component is either a "static" element, a watcher, a delegate, or a text
 -- element. @TODO: add `CFragment`.
-data Component update state event
-  = CStatic            (ComponentStatic   update state event)
-  | CWatcher           (ComponentWatcher  update state event)
-  | CDelegate (Exists3 (ComponentDelegate update state event))
+data Component eff update state event
+  = CStatic            (ComponentStatic   eff update state event)
+  | CWatcher           (ComponentWatcher  eff update state event)
+  | CDelegate (Exists3 (ComponentDelegate eff update state event))
   | CText String
 
 
@@ -117,10 +117,10 @@ data Component update state event
 -- (what are we going to display?), a subscription (what events are we going to
 -- generate and/or be interested in?) and an update method (how are we going to
 -- interpret those events into updates for the DOM?)
-type Application update state event
-  = { view         ∷ Component update state event
+type Application eff update state event
+  = { view         ∷ Component eff update state event
     , subscription ∷ FRP.Event event
     , update       ∷ Maybe { state ∷ state, event ∷ event }
-                   → { update ∷ update, state ∷ state }
+                   → Eff eff { update ∷ update, state ∷ state }
     }
 

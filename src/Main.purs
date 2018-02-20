@@ -22,14 +22,14 @@ main
 
                 Nothing →
                   { interest: false
-                  , renderer: defer \_ → text "Waiting..."
+                  , renderer: defer \_ → text "0"
                   }
 
       , update: case _ of
           Just { event: time } →
-            { update: unit, state: time }
+            pure { update: unit, state: time }
           Nothing →
-            { update: unit, state: 0 }
+            pure { update: unit, state: 0 }
 
       , subscription: FRP.interval 1000
       }

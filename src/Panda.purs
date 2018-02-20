@@ -14,7 +14,7 @@ import Prelude
 
 runApplication
   ∷ ∀ update state event
-  . Types.Application update state event
+  . Types.Application _ update state event
   → Eff _ Unit
 
 runApplication configuration = do

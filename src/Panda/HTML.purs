@@ -4,10 +4,10 @@ import Panda.Internal.Types as Types
 import Prelude
 
 a
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 a properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -17,10 +17,10 @@ a properties children
         }
 
 abbr
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 abbr properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -30,10 +30,10 @@ abbr properties children
         }
 
 acronym
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 acronym properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -43,10 +43,10 @@ acronym properties children
         }
 
 address
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 address properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -56,10 +56,10 @@ address properties children
         }
 
 applet
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 applet properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -69,10 +69,10 @@ applet properties children
         }
 
 area
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 area properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -82,10 +82,10 @@ area properties children
         }
 
 article
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 article properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -95,10 +95,10 @@ article properties children
         }
 
 aside
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 aside properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -108,10 +108,10 @@ aside properties children
         }
 
 audio
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 audio properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -121,10 +121,10 @@ audio properties children
         }
 
 b
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 b properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -134,10 +134,10 @@ b properties children
         }
 
 base
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 base properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -147,10 +147,10 @@ base properties children
         }
 
 basefont
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 basefont properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -160,10 +160,10 @@ basefont properties children
         }
 
 bdi
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 bdi properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -173,10 +173,10 @@ bdi properties children
         }
 
 bdo
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 bdo properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -186,10 +186,10 @@ bdo properties children
         }
 
 big
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 big properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -199,10 +199,10 @@ big properties children
         }
 
 blockquote
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 blockquote properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -212,10 +212,10 @@ blockquote properties children
         }
 
 body
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 body properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -225,10 +225,10 @@ body properties children
         }
 
 br
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 br properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -238,10 +238,10 @@ br properties children
         }
 
 button
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 button properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -251,10 +251,10 @@ button properties children
         }
 
 canvas
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 canvas properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -264,10 +264,10 @@ canvas properties children
         }
 
 caption
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 caption properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -277,10 +277,10 @@ caption properties children
         }
 
 center
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 center properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -290,10 +290,10 @@ center properties children
         }
 
 cite
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 cite properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -303,10 +303,10 @@ cite properties children
         }
 
 code
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 code properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -316,10 +316,10 @@ code properties children
         }
 
 col
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 col properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -329,10 +329,10 @@ col properties children
         }
 
 colgroup
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 colgroup properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -342,10 +342,10 @@ colgroup properties children
         }
 
 datalist
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 datalist properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -355,10 +355,10 @@ datalist properties children
         }
 
 dd
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 dd properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -368,10 +368,10 @@ dd properties children
         }
 
 del
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 del properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -381,10 +381,10 @@ del properties children
         }
 
 details
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 details properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -394,10 +394,10 @@ details properties children
         }
 
 dfn
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 dfn properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -407,10 +407,10 @@ dfn properties children
         }
 
 dialog
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 dialog properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -420,10 +420,10 @@ dialog properties children
         }
 
 dir
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 dir properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -433,10 +433,10 @@ dir properties children
         }
 
 div
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 div properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -446,10 +446,10 @@ div properties children
         }
 
 dl
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 dl properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -459,10 +459,10 @@ dl properties children
         }
 
 dt
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 dt properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -472,10 +472,10 @@ dt properties children
         }
 
 em
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 em properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -485,10 +485,10 @@ em properties children
         }
 
 embed
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 embed properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -498,10 +498,10 @@ embed properties children
         }
 
 fieldset
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 fieldset properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -511,10 +511,10 @@ fieldset properties children
         }
 
 figcaption
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 figcaption properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -524,10 +524,10 @@ figcaption properties children
         }
 
 figure
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 figure properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -537,10 +537,10 @@ figure properties children
         }
 
 font
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 font properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -550,10 +550,10 @@ font properties children
         }
 
 footer
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 footer properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -563,10 +563,10 @@ footer properties children
         }
 
 form
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 form properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -576,9 +576,9 @@ form properties children
         }
 
 fragment
-  ∷ ∀ update state event
-  . Array (Types.Component update state event)
-  → Types.Component update state event
+  ∷ ∀ eff update state event
+  . Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 fragment children
   = Types.CStatic $
       Types.ComponentStatic
@@ -588,10 +588,10 @@ fragment children
         }
 
 frame
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 frame properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -601,10 +601,10 @@ frame properties children
         }
 
 frameset
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 frameset properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -614,10 +614,10 @@ frameset properties children
         }
 
 h1
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 h1 properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -627,10 +627,10 @@ h1 properties children
         }
 
 head
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 head properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -640,10 +640,10 @@ head properties children
         }
 
 header
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 header properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -653,10 +653,10 @@ header properties children
         }
 
 hr
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 hr properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -666,10 +666,10 @@ hr properties children
         }
 
 html
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 html properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -679,10 +679,10 @@ html properties children
         }
 
 i
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 i properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -692,10 +692,10 @@ i properties children
         }
 
 iframe
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 iframe properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -705,10 +705,10 @@ iframe properties children
         }
 
 img
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 img properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -718,10 +718,10 @@ img properties children
         }
 
 input
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 input properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -731,10 +731,10 @@ input properties children
         }
 
 ins
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 ins properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -744,10 +744,10 @@ ins properties children
         }
 
 kbd
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 kbd properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -757,10 +757,10 @@ kbd properties children
         }
 
 label
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 label properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -770,10 +770,10 @@ label properties children
         }
 
 legend
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 legend properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -783,10 +783,10 @@ legend properties children
         }
 
 li
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 li properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -796,10 +796,10 @@ li properties children
         }
 
 link
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 link properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -809,10 +809,10 @@ link properties children
         }
 
 main
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 main properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -822,10 +822,10 @@ main properties children
         }
 
 map
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 map properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -835,10 +835,10 @@ map properties children
         }
 
 mark
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 mark properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -848,10 +848,10 @@ mark properties children
         }
 
 menu
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 menu properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -861,10 +861,10 @@ menu properties children
         }
 
 menuitem
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 menuitem properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -874,10 +874,10 @@ menuitem properties children
         }
 
 meta
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 meta properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -887,10 +887,10 @@ meta properties children
         }
 
 meter
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 meter properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -900,10 +900,10 @@ meter properties children
         }
 
 nav
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 nav properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -913,10 +913,10 @@ nav properties children
         }
 
 noframes
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 noframes properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -926,10 +926,10 @@ noframes properties children
         }
 
 noscript
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 noscript properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -939,10 +939,10 @@ noscript properties children
         }
 
 object
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 object properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -952,10 +952,10 @@ object properties children
         }
 
 ol
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 ol properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -965,10 +965,10 @@ ol properties children
         }
 
 optgroup
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 optgroup properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -978,10 +978,10 @@ optgroup properties children
         }
 
 option
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 option properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -991,10 +991,10 @@ option properties children
         }
 
 output
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 output properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -1004,10 +1004,10 @@ output properties children
         }
 
 p
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 p properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -1017,10 +1017,10 @@ p properties children
         }
 
 param
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 param properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -1030,10 +1030,10 @@ param properties children
         }
 
 picture
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 picture properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -1043,10 +1043,10 @@ picture properties children
         }
 
 pre
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 pre properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -1056,10 +1056,10 @@ pre properties children
         }
 
 progress
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 progress properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -1069,10 +1069,10 @@ progress properties children
         }
 
 q
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 q properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -1082,10 +1082,10 @@ q properties children
         }
 
 rp
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 rp properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -1095,10 +1095,10 @@ rp properties children
         }
 
 rt
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 rt properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -1108,10 +1108,10 @@ rt properties children
         }
 
 ruby
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 ruby properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -1121,10 +1121,10 @@ ruby properties children
         }
 
 s
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 s properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -1134,10 +1134,10 @@ s properties children
         }
 
 samp
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 samp properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -1147,10 +1147,10 @@ samp properties children
         }
 
 script
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 script properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -1160,10 +1160,10 @@ script properties children
         }
 
 section
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 section properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -1173,10 +1173,10 @@ section properties children
         }
 
 select
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 select properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -1186,10 +1186,10 @@ select properties children
         }
 
 small
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 small properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -1199,10 +1199,10 @@ small properties children
         }
 
 source
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 source properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -1212,10 +1212,10 @@ source properties children
         }
 
 span
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 span properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -1225,10 +1225,10 @@ span properties children
         }
 
 strike
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 strike properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -1238,10 +1238,10 @@ strike properties children
         }
 
 strong
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 strong properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -1251,10 +1251,10 @@ strong properties children
         }
 
 style
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 style properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -1264,10 +1264,10 @@ style properties children
         }
 
 sub
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 sub properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -1277,10 +1277,10 @@ sub properties children
         }
 
 summary
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 summary properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -1290,10 +1290,10 @@ summary properties children
         }
 
 sup
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 sup properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -1303,10 +1303,10 @@ sup properties children
         }
 
 table
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 table properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -1316,10 +1316,10 @@ table properties children
         }
 
 tbody
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 tbody properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -1329,10 +1329,10 @@ tbody properties children
         }
 
 td
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 td properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -1342,10 +1342,10 @@ td properties children
         }
 
 template
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 template properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -1355,17 +1355,17 @@ template properties children
         }
 
 text
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . String
-  → Types.Component update state event
+  → Types.Component eff update state event
 text string
   = Types.CText string
 
 textarea
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 textarea properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -1375,10 +1375,10 @@ textarea properties children
         }
 
 tfoot
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 tfoot properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -1388,10 +1388,10 @@ tfoot properties children
         }
 
 th
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 th properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -1401,10 +1401,10 @@ th properties children
         }
 
 thead
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 thead properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -1414,10 +1414,10 @@ thead properties children
         }
 
 time
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 time properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -1427,10 +1427,10 @@ time properties children
         }
 
 title
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 title properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -1440,10 +1440,10 @@ title properties children
         }
 
 tr
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 tr properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -1453,10 +1453,10 @@ tr properties children
         }
 
 track
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 track properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -1466,10 +1466,10 @@ track properties children
         }
 
 tt
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 tt properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -1479,10 +1479,10 @@ tt properties children
         }
 
 u
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 u properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -1492,10 +1492,10 @@ u properties children
         }
 
 ul
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 ul properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -1505,10 +1505,10 @@ ul properties children
         }
 
 var
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 var properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -1518,10 +1518,10 @@ var properties children
         }
 
 video
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 video properties children
   = Types.CStatic $
       Types.ComponentStatic
@@ -1531,10 +1531,10 @@ video properties children
         }
 
 wbr
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  → Array (Types.Component eff update state event)
+  → Types.Component eff update state event
 wbr properties children
   = Types.CStatic $
       Types.ComponentStatic
