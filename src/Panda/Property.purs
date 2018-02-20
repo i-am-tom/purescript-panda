@@ -9,9 +9,8 @@ import DOM.Node.Element (removeAttribute, setAttribute) as DOM
 import DOM.Node.Types (Element, elementToEventTarget) as DOM
 import Data.Foldable (sequence_)
 import Data.Lazy (force)
-import FRP.Event (Event, subscribe) as FRP
+import FRP.Event (Event, create, subscribe) as FRP
 import FRP.Event.Class (withLast) as FRP
-import Panda.Event (create) as FRP
 import Panda.Internal.Types as Types
 
 import Prelude

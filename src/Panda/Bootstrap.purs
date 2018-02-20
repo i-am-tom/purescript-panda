@@ -12,9 +12,8 @@ import Data.Foldable        (foldr, sequence_, traverse_)
 import Data.Lazy            (force)
 import Data.Maybe           (Maybe(..), isNothing)
 import Data.Traversable     (sequence)
-import FRP.Event            (Event, subscribe) as FRP
+import FRP.Event            (Event, create, subscribe) as FRP
 import FRP.Event.Class      (fold, withLast) as FRP
-import Panda.Event          (create) as FRP
 import Panda.Internal.Types as Types
 import Panda.Property       as Property
 import Util.Exists          (runExists3)
