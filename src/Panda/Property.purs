@@ -16,6 +16,8 @@ import Panda.Internal.Types as Types
 
 import Prelude
 
+-- | Given a Producer, return the string that identifies it when adding an
+-- event handler.
 producerToString
   ∷ Types.Producer
   → String
@@ -24,6 +26,7 @@ producerToString
   = case _ of
       Types.OnClick → "click"
 
+-- | Convert a Producer into a regular DOM event.
 producerToEventType
   ∷ Types.Producer
   → DOM.EventType
@@ -32,6 +35,9 @@ producerToEventType
   = case _ of
       Types.OnClick → DOM.Events.click
 
+-- | Add an event listener to a DOM element. The return result is an `Event`
+-- that can be watched for events firing from this node, as well as the `key`
+-- string that was used to register the event.
 attach
   ∷ ∀ event
   . { key ∷ Types.Producer
@@ -58,6 +64,8 @@ attach { key, event } element = do
       , events
       }
 
+-- | Render a Property on a DOM element. This also initialises any
+-- `Watcher`-style listeners.
 render
   ∷ ∀ update state event
   . DOM.Element

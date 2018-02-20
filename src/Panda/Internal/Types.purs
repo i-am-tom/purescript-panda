@@ -79,9 +79,10 @@ newtype ComponentStatic update state event
 -- initial render.
 newtype ComponentWatcher update state event
   = ComponentWatcher
-      ( { update ∷ update
-        , state  ∷ state
-        }
+      ( Maybe
+          { update ∷ update
+          , state  ∷ state
+          }
       → { interest ∷ Boolean
         , renderer ∷ Lazy (Component update state event)
         }

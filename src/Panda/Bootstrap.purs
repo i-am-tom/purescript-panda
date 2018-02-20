@@ -9,7 +9,7 @@ import DOM.Node.Node (appendChild, firstChild, removeChild) as DOM
 import DOM.Node.Types (Document, Node, documentFragmentToNode, elementToNode, textToNode) as DOM
 import Data.Foldable (foldr, sequence_, traverse_)
 import Data.Lazy (force)
-import Data.Maybe (Maybe(..))
+import Data.Maybe (Maybe(..), isNothing)
 import Data.Tuple (Tuple(..))
 import FRP.Event (Event, subscribe) as FRP
 import FRP.Event.Class (mapAccum, withLast) as FRP
@@ -19,6 +19,8 @@ import Panda.Property as Property
 import Util.Exists (runExists3)
 
 import Prelude
+
+-- | Set up and kick off a Panda application.
 
 bootstrap
   ∷ ∀ update state event
@@ -42,7 +44,8 @@ bootstrap document { view, subscription, update } = do
     loop event previousState = Tuple (Just next.state) next
       where next = update (map { state: _, event } previousState)
 
-    updates = FRP.mapAccum loop renderedPage.events Nothing
+    events  = subscription <|> renderedPage.events
+    updates = FRP.mapAccum loop events Nothing
 
   cancelApplication
     ← FRP.subscribe updates renderedPage.handleUpdate
@@ -152,30 +155,35 @@ render document
         cancelWatcher ← FRP.subscribe (FRP.withLast cancellers) \{ last } →
           sequence_ last
 
+        let
+          updater update = do
+            let { interest, renderer } = listener update
+
+            when (isNothing update || interest) do
+              { cancel, element, events, handleUpdate }
+                  ← render document (force renderer)
+
+              firstChild ← DOM.firstChild fragment
+
+              case firstChild of
+                Just elem → do
+                  _ ← DOM.removeChild elem fragment
+                  pure unit
+
+                Nothing →
+                  pure unit
+
+              _ ← DOM.appendChild element fragment
+
+              cancelEvents ← FRP.subscribe events toOutput
+              registerCanceller (cancel *> cancelEvents)
+
+        updater Nothing
+
         pure
           { cancel: registerCanceller (pure unit) *> cancelWatcher
           , events: output
           , element: fragment
-          , handleUpdate: \update → do
-              let { interest, renderer } = listener update
-
-              when interest do
-                { cancel, element, events, handleUpdate }
-                    ← render document (force renderer)
-
-                firstChild ← DOM.firstChild fragment
-
-                case firstChild of
-                  Just elem → do
-                    _ ← DOM.removeChild elem fragment
-                    pure unit
-
-                  Nothing →
-                    pure unit
-
-                _ ← DOM.appendChild element fragment
-
-                cancelEvents ← FRP.subscribe events toOutput
-                registerCanceller (cancel *> cancelEvents)
+          , handleUpdate: updater <<< Just
           }
 
