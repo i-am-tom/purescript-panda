@@ -1,0 +1,22 @@
+{
+  "name": "purescript-panda",
+  "description": "Black-and-white rendering.",
+  "main": "",
+  "authors": [
+    "Tom Harding <tomjharding@live.co.uk>"
+  ],
+  "license": "MIT",
+  "homepage": "https://github.com/i-am-tom/purescript-panda",
+  "private": true,
+  "dependencies": {
+    "purescript-behaviors": "^6.3.0",
+    "purescript-dom": "^4.15.0"
+  },
+  "devDependencies": {
+    "purescript-behaviors": "^6.3.0",
+    "purescript-dom": "^4.15.0",
+    "purescript-prelude": "^3.1.1",
+    "purescript-console": "^3.0.0",
+    "purescript-eff": "^3.1.0"
+  }
+}

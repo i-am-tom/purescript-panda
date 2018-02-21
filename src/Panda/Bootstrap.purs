@@ -41,33 +41,53 @@ bootstrap document { view, subscription, update } = do
   renderedPage ← render document view
 
   let
-    prepare ∷ event → Maybe state → Eff _ { update ∷ update, state ∷ state }
-    prepare event state = update (map { state: _, event } state)
+    prepare
+      ∷ event
+      → Maybe state
+      → Eff _
+          { update ∷ update
+          , state ∷ state
+          }
+    prepare event state
+      = update (map { state: _, event } state)
 
-    events ∷ FRP.Event event
-    events = subscription <|> renderedPage.events
+    events
+      ∷ FRP.Event event
+    events
+      = subscription <|> renderedPage.events
 
     -- Compute an update and new state based on an event.
     loop
       ∷ (Maybe state → Eff _ { update ∷ update, state ∷ state })
       → Maybe (Eff _ { update ∷ update, state ∷ state })
       → Maybe (Eff _ { update ∷ update, state ∷ state })
-    loop updater previous = Just do
-      last ← sequence previous
-      updater (map _.state last)
+    loop updater previous
+      = Just do
+          last ← sequence previous
+          updater (map _.state last)
 
-    updates ∷ FRP.Event (Eff _ { update ∷ update, state ∷ state })
-    updates = filtered (FRP.fold loop (map prepare events) Nothing)
+    updates
+      ∷ FRP.Event (Eff _ { update ∷ update, state ∷ state })
+    updates
+      = filtered (FRP.fold loop (map prepare events) Nothing)
 
-    handleUpdate ∷ Eff _ { update ∷ update, state ∷ state } → Types.Canceller _
-    handleUpdate update' = update' >>= renderedPage.handleUpdate
+    handleUpdate
+      ∷ Eff _ { update ∷ update, state ∷ state }
+      → Types.Canceller _
+    handleUpdate update'
+      = update' >>= renderedPage.handleUpdate
 
   cancelApplication ← FRP.subscribe updates handleUpdate
 
   pure renderedPage
-    { cancel = renderedPage.cancel
-            *> cancelApplication
+    { cancel
+        = renderedPage.cancel *> cancelApplication
     }
+
+-- | Render the "view" of an application. This is the function that actually
+-- produces the DOM elements, and any rendering of a delegate will call
+-- `bootstrap`. This is also where the event handlers and cancellers are
+-- computed.
 
 render
   ∷ ∀ update state event
@@ -108,6 +128,7 @@ render document
             _ ← DOM.appendChild element (DOM.elementToNode parent)
             pure { cancel, events, handleUpdate }
 
+          -- TODO: monoidalise this.
           combineEventSystems
             = lift2 \this that →
                 { handleUpdate: \update → do
@@ -137,29 +158,31 @@ render document
 
       Types.CDelegate delegateE →
         let
-          process = runExists3 \(Types.ComponentDelegate { delegate, focus }) → do
-            { cancel, events, element, handleUpdate }
-                ← bootstrap document delegate
+          process
+            = runExists3 \(Types.ComponentDelegate { delegate, focus }) → do
+                { cancel, events, element, handleUpdate }
+                    ← bootstrap document delegate
 
-            pure
-              { cancel
-              , events: map focus.event events
-              , element
-              , handleUpdate: \{ state, update } →
-                  case focus.update update of
-                    Just subupdate →
-                      handleUpdate
-                        { update: subupdate
-                        , state:  focus.state state
-                        }
+                pure
+                  { cancel
+                  , events: map focus.event events
+                  , element
+                  , handleUpdate: \{ state, update } →
+                      case focus.update update of
+                        Just subupdate →
+                          handleUpdate
+                            { update: subupdate
+                            , state:  focus.state state
+                            }
 
-                    Nothing →
-                      pure unit
-              }
+                        Nothing →
+                          pure unit
+                  }
 
         in process delegateE
 
       Types.CWatcher (Types.ComponentWatcher listener) → do
+        -- TODO: don't create an element for a watcher.
         parent ← map DOM.elementToNode (DOM.createElement "div" document)
 
         { event: output,     push: toOutput }          ← FRP.create
