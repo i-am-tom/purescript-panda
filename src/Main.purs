@@ -3,30 +3,45 @@ module Main where
 import Control.Monad.Eff    (Eff)
 import Control.Plus         (empty)
 import Data.Maybe           (Maybe(..))
-import FRP.Event.Time       (interval) as FRP
 import Panda                (runApplication)
 import Panda.HTML           as PH
-import Panda.Internal.Types
 import Prelude
+
+data NumberPickerEvent
+  = NumberPickerIncrement
+  | NumberPickerDecrement
 
 main ∷ Eff _ Unit
 main
   = runApplication
       { view:
-          PH.button
-            [ PProducer (PropertyProducer
-                { key: OnClick
-                , event: (_ + 1)
-                })
-            ]
+          PH.div_
+            [ PH.button
+                [ PH.onClick NumberPickerIncrement
+                ]
 
-            [ PH.watchAny \{state} →
+                [ PH.text "-"
+                ]
+
+            , PH.watchAny \{ state } →
                 PH.text (show state)
+
+            , PH.button
+                [ PH.onClick NumberPickerDecrement
+                ]
+
+                [ PH.text "+"
+                ]
             ]
 
       , update: case _ of
-          Just { event: f, state } →
-            pure { update: unit, state: f state }
+          Just { event, state } →
+            pure
+              { update: unit
+              , state: case event of
+                  NumberPickerIncrement → state + 1
+                  NumberPickerDecrement → state - 1
+              }
 
           Nothing →
             pure { update: unit, state: 0 }

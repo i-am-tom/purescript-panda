@@ -9,10 +9,9 @@ import DOM.Node.Node        (appendChild, firstChild, removeChild) as DOM
 import DOM.Node.Types       (Document, Node, elementToNode, textToNode) as DOM
 import Data.Filterable      (filtered)
 import Data.Foldable        (foldr, sequence_)
-import Data.Traversable     (traverse)
 import Data.Lazy            (force)
 import Data.Maybe           (Maybe(..))
-import Data.Traversable     (sequence)
+import Data.Traversable     (sequence, traverse)
 import FRP.Event            (Event, create, subscribe) as FRP
 import FRP.Event.Class      (fold, withLast) as FRP
 import Panda.Internal.Types as Types
@@ -40,8 +39,7 @@ bootstrap
 
 bootstrap document { view, subscription, update } = do
   renderedPage ← render document view
-
-  initUpdateState <- update Nothing
+  initialState ← update Nothing
 
   let
     prepare
@@ -69,18 +67,17 @@ bootstrap document { view, subscription, update } = do
           last ← sequence previous
           updater (map _.state last)
 
+    loopState
+      = Just (pure initialState)
+
     updates
       ∷ FRP.Event (Eff _ { update ∷ update, state ∷ state })
     updates
-      = filtered (FRP.fold loop (map prepare events) (Just (pure initUpdateState)))
+      = filtered (FRP.fold loop (map prepare events) loopState)
 
-    handleUpdate
-      ∷ Eff _ { update ∷ update, state ∷ state }
-      → Types.Canceller _
-    handleUpdate update'
-      = update' >>= renderedPage.handleUpdate
-
-  cancelApplication ← FRP.subscribe updates handleUpdate
+  cancelApplication ← FRP.subscribe updates \update' → do
+     unwrapped <- update'
+     renderedPage.handleUpdate unwrapped
 
   pure renderedPage
     { cancel
@@ -121,7 +118,7 @@ render document
 
       Types.CStatic (Types.ComponentStatic { children, properties, tagName }) → do
         parent ← DOM.createElement tagName document
-        renderedProps <- traverse (Property.render parent) properties
+        renderedProps ← traverse (Property.render parent) properties
 
         let
           prepare child = do
@@ -149,8 +146,12 @@ render document
                 , handleUpdate: \_ → pure unit
                 }
 
+          combinables
+            =  map prepare children
+            <> map pure renderedProps
+
         aggregated
-          ← foldr combineEventSystems initial (map prepare children <> (pure <$> renderedProps))
+          ← foldr combineEventSystems initial combinables
 
         pure
           { cancel: aggregated.cancel
