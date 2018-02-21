@@ -7,7 +7,7 @@ import Prelude              (($))
 
 watchAny
   ∷ ∀ update state event
-  . ( Maybe { state ∷ state, update ∷ update }
+  . ( { state ∷ state, update ∷ update }
     → Types.Component _ update state event
     )
   → Types.Component _ update state event

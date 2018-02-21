@@ -2,13 +2,14 @@ module Panda.Property where
 
 import Control.Monad.Eff (Eff)
 import Control.Plus (empty)
-import DOM.Event.EventTarget (addEventListener, eventListener) as DOM
+import DOM.Event.EventTarget (addEventListener, eventListener, removeEventListener, EventListener) as DOM
 import DOM.Event.Types (EventType) as DOM
 import DOM.HTML.Event.EventTypes (click) as DOM.Events
 import DOM.Node.Element (removeAttribute, setAttribute) as DOM
 import DOM.Node.Types (Element, elementToEventTarget) as DOM
-import Data.Foldable (sequence_)
+import Data.Foldable (sequence_, traverse_)
 import Data.Lazy (force)
+import Data.Maybe (Maybe, isNothing)
 import FRP.Event (Event, create, subscribe) as FRP
 import FRP.Event.Class (withLast) as FRP
 import Panda.Internal.Types as Types
@@ -44,22 +45,23 @@ attach
     }
   → DOM.Element
   → Eff _
-      { key ∷ String
+      { listener ∷ DOM.EventListener _
       , events ∷ FRP.Event event
       }
 
 attach { key, event } element = do
   { push, event: events } ← FRP.create
   let name = producerToString key
+      listener = DOM.eventListener \_ → push event
 
   DOM.addEventListener
     (producerToEventType key)
-    (DOM.eventListener \_ → push event)
+    listener
     false
     (DOM.elementToEventTarget element)
 
   pure
-      { key: name
+      { listener
       , events
       }
 
@@ -112,10 +114,14 @@ render element
           }
 
       Types.PProducer (Types.PropertyProducer trigger) → do
-        { key, events } ← attach trigger element
+        { listener, events } ← attach trigger element
 
         pure
-          { cancel: DOM.removeAttribute key element
+          { cancel: DOM.removeEventListener
+              (producerToEventType trigger.key)
+              listener
+              false
+              (DOM.elementToEventTarget element)
           , events
           , handleUpdate: \_ → pure unit
           }

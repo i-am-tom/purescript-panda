@@ -8,9 +8,10 @@ import DOM.Node.Document    (createElement, createTextNode) as DOM
 import DOM.Node.Node        (appendChild, firstChild, removeChild) as DOM
 import DOM.Node.Types       (Document, Node, elementToNode, textToNode) as DOM
 import Data.Filterable      (filtered)
-import Data.Foldable        (foldr, sequence_, traverse_)
+import Data.Foldable        (foldr, sequence_)
+import Data.Traversable     (traverse)
 import Data.Lazy            (force)
-import Data.Maybe           (Maybe(..), isNothing)
+import Data.Maybe           (Maybe(..))
 import Data.Traversable     (sequence)
 import FRP.Event            (Event, create, subscribe) as FRP
 import FRP.Event.Class      (fold, withLast) as FRP
@@ -39,6 +40,8 @@ bootstrap
 
 bootstrap document { view, subscription, update } = do
   renderedPage ← render document view
+
+  initUpdateState <- update Nothing
 
   let
     prepare
@@ -69,7 +72,7 @@ bootstrap document { view, subscription, update } = do
     updates
       ∷ FRP.Event (Eff _ { update ∷ update, state ∷ state })
     updates
-      = filtered (FRP.fold loop (map prepare events) Nothing)
+      = filtered (FRP.fold loop (map prepare events) (Just (pure initUpdateState)))
 
     handleUpdate
       ∷ Eff _ { update ∷ update, state ∷ state }
@@ -118,7 +121,7 @@ render document
 
       Types.CStatic (Types.ComponentStatic { children, properties, tagName }) → do
         parent ← DOM.createElement tagName document
-        traverse_ (Property.render parent) properties
+        renderedProps <- traverse (Property.render parent) properties
 
         let
           prepare child = do
@@ -147,7 +150,7 @@ render document
                 }
 
         aggregated
-          ← foldr combineEventSystems initial (map prepare children)
+          ← foldr combineEventSystems initial (map prepare children <> (pure <$> renderedProps))
 
         pure
           { cancel: aggregated.cancel
@@ -195,7 +198,7 @@ render document
           updater update = do
             let { interest, renderer } = listener update
 
-            when (isNothing update || interest) do
+            when interest do
               { cancel, element, events, handleUpdate }
                   ← render document (force renderer)
 
@@ -214,12 +217,10 @@ render document
               cancelEvents ← FRP.subscribe events toOutput
               registerCanceller (cancel *> cancelEvents)
 
-        updater Nothing
-
         pure
           { cancel: registerCanceller (pure unit) *> cancelWatcher
           , events: output
           , element: parent
-          , handleUpdate: updater <<< Just
+          , handleUpdate: updater
           }
 
