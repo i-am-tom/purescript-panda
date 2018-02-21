@@ -42,20 +42,11 @@ bootstrap document { view, subscription, update } = do
   initialState ← update Nothing
 
   let
-    prepare
-      ∷ event
-      → Maybe state
-      → Eff _
-          { update ∷ update
-          , state ∷ state
-          }
-    prepare event state
-      = update (map { state: _, event } state)
+    prepare ∷ event → Maybe state → Eff _ { update ∷ update , state ∷ state }
+    prepare event state = update (map { state: _, event } state)
 
-    events
-      ∷ FRP.Event event
-    events
-      = subscription <|> renderedPage.events
+    events ∷ FRP.Event event
+    events = subscription <|> renderedPage.events
 
     -- Compute an update and new state based on an event.
     loop
@@ -67,17 +58,20 @@ bootstrap document { view, subscription, update } = do
           last ← sequence previous
           updater (map _.state last)
 
-    loopState
-      = Just (pure initialState)
+    loopState = Just (pure initialState)
 
-    updates
-      ∷ FRP.Event (Eff _ { update ∷ update, state ∷ state })
-    updates
-      = filtered (FRP.fold loop (map prepare events) loopState)
+    updates ∷ FRP.Event (Eff _ { update ∷ update, state ∷ state })
+    updates = filtered (FRP.fold loop (map prepare events) loopState)
 
-  cancelApplication ← FRP.subscribe updates \update' → do
-     unwrapped <- update'
-     renderedPage.handleUpdate unwrapped
+    handleUpdate
+      ∷ Eff _ { update ∷ update, state ∷ state }
+      → Types.Canceller _
+    handleUpdate update' = do
+       unwrapped <- update'
+       renderedPage.handleUpdate unwrapped
+
+  cancelApplication ← FRP.subscribe updates handleUpdate
+  handleUpdate (pure initialState)
 
   pure renderedPage
     { cancel

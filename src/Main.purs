@@ -17,7 +17,7 @@ main
       { view:
           PH.div_
             [ PH.button
-                [ PH.onClick NumberPickerIncrement
+                [ PH.onClick NumberPickerDecrement
                 ]
 
                 [ PH.text "-"
@@ -27,7 +27,7 @@ main
                 PH.text (show state)
 
             , PH.button
-                [ PH.onClick NumberPickerDecrement
+                [ PH.onClick NumberPickerIncrement
                 ]
 
                 [ PH.text "+"
@@ -44,7 +44,10 @@ main
               }
 
           Nothing →
-            pure { update: unit, state: 0 }
+            pure
+              { update: unit
+              , state: 0
+              }
 
       , subscription: empty
       }
