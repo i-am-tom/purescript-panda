@@ -1,10 +1,11 @@
 module Panda.Internal.Types where
 
 import Control.Monad.Eff (Eff)
-import Data.Lazy (Lazy)
-import Data.Maybe (Maybe)
-import FRP.Event (Event) as FRP
-import Util.Exists (Exists3)
+import DOM.Event.Types   (Event) as DOM
+import Data.Lazy         (Lazy)
+import Data.Maybe        (Maybe)
+import FRP.Event         (Event) as FRP
+import Util.Exists       (Exists3)
 
 import Prelude
 
@@ -44,8 +45,8 @@ newtype PropertyWatcher update state event
 -- within different `Producer` constructors.
 newtype PropertyProducer event
   = PropertyProducer
-      { key   ∷ Producer
-      , event ∷ event
+      { key     ∷ Producer
+      , onEvent ∷ DOM.Event → Maybe event
       }
 
 -- | A property is just one of the above things: a static property, a property

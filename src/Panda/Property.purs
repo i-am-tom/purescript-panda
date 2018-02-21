@@ -1,18 +1,18 @@
 module Panda.Property where
 
-import Control.Monad.Eff (Eff)
-import Control.Plus (empty)
-import DOM.Event.EventTarget (addEventListener, eventListener, removeEventListener, EventListener) as DOM
-import DOM.Event.Types (EventType) as DOM
+import Control.Monad.Eff         (Eff)
+import Control.Plus              (empty)
+import DOM.Event.EventTarget     (addEventListener, eventListener, removeEventListener, EventListener) as DOM
+import DOM.Event.Types           (Event, EventType) as DOM
 import DOM.HTML.Event.EventTypes (click) as DOM.Events
-import DOM.Node.Element (removeAttribute, setAttribute) as DOM
-import DOM.Node.Types (Element, elementToEventTarget) as DOM
-import Data.Foldable (sequence_, traverse_)
-import Data.Lazy (force)
-import Data.Maybe (Maybe, isNothing)
-import FRP.Event (Event, create, subscribe) as FRP
-import FRP.Event.Class (withLast) as FRP
-import Panda.Internal.Types as Types
+import DOM.Node.Element          (setAttribute) as DOM
+import DOM.Node.Types            (Element, elementToEventTarget) as DOM
+import Data.Filterable           (filtered)
+import Data.Foldable             (sequence_)
+import Data.Lazy                 (force)
+import FRP.Event                 (Event, create, subscribe) as FRP
+import FRP.Event.Class           (withLast) as FRP
+import Panda.Internal.Types      as Types
 
 import Prelude
 
@@ -40,8 +40,8 @@ producerToEventType
 -- string that was used to register the event.
 attach
   ∷ ∀ event
-  . { key ∷ Types.Producer
-    , event ∷ event
+  . { key     ∷ Types.Producer
+    , onEvent ∷ DOM.Event → event
     }
   → DOM.Element
   → Eff _
@@ -49,16 +49,15 @@ attach
       , events ∷ FRP.Event event
       }
 
-attach { key, event } element = do
+attach { key, onEvent } element = do
   { push, event: events } ← FRP.create
-  let name = producerToString key
-      listener = DOM.eventListener \_ → push event
 
-  DOM.addEventListener
-    (producerToEventType key)
-    listener
-    false
-    (DOM.elementToEventTarget element)
+  let
+    eventTarget = DOM.elementToEventTarget element
+    eventType   = producerToEventType key
+    listener    = DOM.eventListener (push <<< onEvent)
+
+  DOM.addEventListener eventType listener false eventTarget
 
   pure
       { listener
@@ -122,6 +121,6 @@ render element
               listener
               false
               (DOM.elementToEventTarget element)
-          , events
+          , events: filtered events
           , handleUpdate: \_ → pure unit
           }

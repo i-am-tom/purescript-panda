@@ -17,7 +17,7 @@ main
       { view:
           PH.div_
             [ PH.button
-                [ PH.onClick NumberPickerDecrement
+                [ PH.onClick \_ → NumberPickerDecrement
                 ]
 
                 [ PH.text "-"
@@ -27,7 +27,7 @@ main
                 PH.text (show state)
 
             , PH.button
-                [ PH.onClick NumberPickerIncrement
+                [ PH.onClick \_ → NumberPickerIncrement
                 ]
 
                 [ PH.text "+"
