@@ -1,126 +1,474 @@
 module Panda.Property where
 
-import Control.Monad.Eff         (Eff)
-import Control.Plus              (empty)
-import DOM.Event.EventTarget     (addEventListener, eventListener, removeEventListener, EventListener) as DOM
-import DOM.Event.Types           (Event, EventType) as DOM
-import DOM.HTML.Event.EventTypes (click) as DOM.Events
-import DOM.Node.Element          (setAttribute) as DOM
-import DOM.Node.Types            (Element, elementToEventTarget) as DOM
-import Data.Filterable           (filtered)
-import Data.Foldable             (sequence_)
-import Data.Lazy                 (force)
-import FRP.Event                 (Event, create, subscribe) as FRP
-import FRP.Event.Class           (withLast) as FRP
-import Panda.Internal.Types      as Types
+import Data.Maybe           (Maybe(..))
+import DOM.Event.Types      (Event, FocusEvent, InputEvent, KeyboardEvent, MouseEvent, TouchEvent, WheelEvent) as DOM
+import DOM.HTML.Event.Types (DragEvent, ErrorEvent) as DOM
+import Panda.Internal.Types as Types
+import Prelude              (($), (<<<), id)
+import Unsafe.Coerce        (unsafeCoerce)
 
-import Prelude
+-- Event conversions
 
--- | Given a Producer, return the string that identifies it when adding an
--- event handler.
-producerToString
-  ∷ Types.Producer
-  → String
+eventToDragEvent ∷ DOM.Event → DOM.DragEvent
+eventToDragEvent = unsafeCoerce
 
-producerToString
-  = case _ of
-      Types.OnClick → "click"
+eventToErrorEvent ∷ DOM.Event → DOM.ErrorEvent
+eventToErrorEvent = unsafeCoerce
 
--- | Convert a Producer into a regular DOM event.
-producerToEventType
-  ∷ Types.Producer
-  → DOM.EventType
+eventToFocusEvent ∷ DOM.Event → DOM.FocusEvent
+eventToFocusEvent = unsafeCoerce
 
-producerToEventType
-  = case _ of
-      Types.OnClick → DOM.Events.click
+eventToInputEvent ∷ DOM.Event → DOM.InputEvent
+eventToInputEvent = unsafeCoerce
 
--- | Add an event listener to a DOM element. The return result is an `Event`
--- that can be watched for events firing from this node, as well as the `key`
--- string that was used to register the event.
-attach
-  ∷ ∀ event
-  . { key     ∷ Types.Producer
-    , onEvent ∷ DOM.Event → event
-    }
-  → DOM.Element
-  → Eff _
-      { listener ∷ DOM.EventListener _
-      , events ∷ FRP.Event event
-      }
+eventToKeyboardEvent ∷ DOM.Event → DOM.KeyboardEvent
+eventToKeyboardEvent = unsafeCoerce
 
-attach { key, onEvent } element = do
-  { push, event: events } ← FRP.create
+eventToMouseEvent ∷ DOM.Event → DOM.MouseEvent
+eventToMouseEvent = unsafeCoerce
 
-  let
-    eventTarget = DOM.elementToEventTarget element
-    eventType   = producerToEventType key
-    listener    = DOM.eventListener (push <<< onEvent)
+eventToTouchEvent ∷ DOM.Event → DOM.TouchEvent
+eventToTouchEvent = unsafeCoerce
 
-  DOM.addEventListener eventType listener false eventTarget
+eventToWheelEvent ∷ DOM.Event → DOM.WheelEvent
+eventToWheelEvent = unsafeCoerce
 
-  pure
-      { listener
-      , events
-      }
+-- Event producers
 
--- | Render a Property on a DOM element. This also initialises any
--- `Watcher`-style listeners.
-render
-  ∷ ∀ update state event
-  . DOM.Element
+type Producer input
+  = ∀ update state event
+  . (input → event)
   → Types.Property update state event
-  → Eff _
-      { cancel ∷ Types.Canceller _
-      , events ∷ FRP.Event event
-      , handleUpdate
-          ∷ { update ∷ update
-            , state  ∷ state
-            }
-          → Eff _ Unit
-      }
 
-render element
-  = case _ of
-      Types.PStatic (Types.PropertyStatic { key, value }) → do
-        DOM.setAttribute key value element
-
-        pure
-          { cancel: pure unit
-          , events: empty
-          , handleUpdate: \_ → pure unit
+makeProducer
+  ∷ ∀ input
+  . Types.Producer
+  → (DOM.Event → input)
+  → Producer input
+makeProducer key conversion onEvent
+  = Types.PProducer
+      $ Types.PropertyProducer
+         { key
+          , onEvent: Just
+              <<< onEvent
+              <<< conversion
           }
 
-      Types.PWatcher (Types.PropertyWatcher { key, listener }) → do
-        { event: output,     push: toOutput }          ← FRP.create
-        { event: cancellers, push: registerCanceller } ← FRP.create
+onAbort ∷ Producer DOM.Event
+onAbort = makeProducer Types.OnAbort id
 
-        cancelIteration ← FRP.subscribe (FRP.withLast cancellers) \{ last } →
-          sequence_ last
+onBlur ∷ Producer DOM.FocusEvent
+onBlur = makeProducer Types.OnBlur eventToFocusEvent
 
-        pure
-          { cancel: registerCanceller (pure unit) *> cancelIteration
-          , events: output
-          , handleUpdate: \update → do
-              let { interest, renderer } = listener update
+onChange ∷ Producer DOM.Event
+onChange = makeProducer Types.OnChange id
 
-              when interest do
-                { cancel, events, handleUpdate }
-                    ← render element (force renderer)
+onClick ∷ Producer DOM.MouseEvent
+onClick = makeProducer Types.OnClick eventToMouseEvent
 
-                cancelChild ← FRP.subscribe events toOutput
-                registerCanceller (cancel *> cancelChild)
+onContextMenu ∷ Producer DOM.MouseEvent
+onContextMenu = makeProducer Types.OnContextMenu eventToMouseEvent
+
+onDoubleClick ∷ Producer DOM.MouseEvent
+onDoubleClick = makeProducer Types.OnDoubleClick eventToMouseEvent
+
+onDrag ∷ Producer DOM.DragEvent
+onDrag = makeProducer Types.OnDrag eventToDragEvent
+
+onDragEnd ∷ Producer DOM.DragEvent
+onDragEnd = makeProducer Types.OnDragEnd eventToDragEvent
+
+onDragEnter ∷ Producer DOM.DragEvent
+onDragEnter = makeProducer Types.OnDragEnter eventToDragEvent
+
+onDragExit ∷ Producer DOM.DragEvent
+onDragExit = makeProducer Types.OnDragExit eventToDragEvent
+
+onDragLeave ∷ Producer DOM.DragEvent
+onDragLeave = makeProducer Types.OnDragLeave eventToDragEvent
+
+onDragOver ∷ Producer DOM.DragEvent
+onDragOver = makeProducer Types.OnDragOver eventToDragEvent
+
+onDragStart ∷ Producer DOM.DragEvent
+onDragStart = makeProducer Types.OnDragStart eventToDragEvent
+
+onDrop ∷ Producer DOM.DragEvent
+onDrop = makeProducer Types.OnDrop eventToDragEvent
+
+onError ∷ Producer DOM.ErrorEvent
+onError = makeProducer Types.OnError eventToErrorEvent
+
+onFocus ∷ Producer DOM.FocusEvent
+onFocus = makeProducer Types.OnFocus eventToFocusEvent
+
+onFocusIn ∷ Producer DOM.FocusEvent
+onFocusIn = makeProducer Types.OnFocusIn eventToFocusEvent
+
+onFocusOut ∷ Producer DOM.FocusEvent
+onFocusOut = makeProducer Types.OnFocusOut eventToFocusEvent
+
+onInput ∷ Producer DOM.Event
+onInput = makeProducer Types.OnInput id
+
+onInvalid ∷ Producer DOM.Event
+onInvalid = makeProducer Types.OnInvalid id
+
+onKeyDown ∷ Producer DOM.KeyboardEvent
+onKeyDown = makeProducer Types.OnKeyDown eventToKeyboardEvent
+
+onKeyPress ∷ Producer DOM.KeyboardEvent
+onKeyPress = makeProducer Types.OnKeyPress eventToKeyboardEvent
+
+onKeyUp ∷ Producer DOM.KeyboardEvent
+onKeyUp = makeProducer Types.OnKeyUp eventToKeyboardEvent
+
+onLoad ∷ Producer DOM.Event
+onLoad = makeProducer Types.OnLoad id
+
+onMouseDown ∷ Producer DOM.MouseEvent
+onMouseDown = makeProducer Types.OnMouseDown eventToMouseEvent
+
+onMouseEnter ∷ Producer DOM.MouseEvent
+onMouseEnter = makeProducer Types.OnMouseEnter eventToMouseEvent
+
+onMouseLeave ∷ Producer DOM.MouseEvent
+onMouseLeave = makeProducer Types.OnMouseLeave eventToMouseEvent
+
+onMouseMove ∷ Producer DOM.MouseEvent
+onMouseMove = makeProducer Types.OnMouseMove eventToMouseEvent
+
+onMouseOver ∷ Producer DOM.MouseEvent
+onMouseOver = makeProducer Types.OnMouseOver eventToMouseEvent
+
+onMouseOut ∷ Producer DOM.MouseEvent
+onMouseOut = makeProducer Types.OnMouseOut eventToMouseEvent
+
+onMouseUp ∷ Producer DOM.MouseEvent
+onMouseUp = makeProducer Types.OnMouseUp eventToMouseEvent
+
+onReset ∷ Producer DOM.Event
+onReset = makeProducer Types.OnReset id
+
+onScroll ∷ Producer DOM.Event
+onScroll = makeProducer Types.OnScroll id
+
+onSelect ∷ Producer DOM.Event
+onSelect = makeProducer Types.OnSelect id
+
+onSubmit ∷ Producer DOM.Event
+onSubmit = makeProducer Types.OnSubmit id
+
+onTransitionEnd ∷ Producer DOM.Event
+onTransitionEnd = makeProducer Types.OnTransitionEnd id
+
+-- Static properties
+
+type StaticProperty
+  = ∀ update state event
+  . Types.Property update state event
+
+make ∷ String → String → StaticProperty
+make key value'
+  = Types.PStatic
+      $ Types.PropertyStatic
+          { key
+          , value: value'
           }
 
-      Types.PProducer (Types.PropertyProducer trigger) → do
-        { listener, events } ← attach trigger element
+accept ∷ String → StaticProperty
+accept = make "accept"
 
-        pure
-          { cancel: DOM.removeEventListener
-              (producerToEventType trigger.key)
-              listener
-              false
-              (DOM.elementToEventTarget element)
-          , events: filtered events
-          , handleUpdate: \_ → pure unit
-          }
+action ∷ String → StaticProperty
+action = make "action"
+
+align ∷ String → StaticProperty
+align = make "align"
+
+alt ∷ String → StaticProperty
+alt = make "alt"
+
+async ∷ String → StaticProperty
+async = make "async"
+
+autocomplete ∷ String → StaticProperty
+autocomplete = make "autocomplete"
+
+autofocus ∷ String → StaticProperty
+autofocus = make "autofocus"
+
+autoplay ∷ String → StaticProperty
+autoplay = make "autoplay"
+
+bgcolor ∷ String → StaticProperty
+bgcolor = make "bgcolor"
+
+border ∷ String → StaticProperty
+border = make "border"
+
+buffered ∷ String → StaticProperty
+buffered = make "buffered"
+
+challenge ∷ String → StaticProperty
+challenge = make "challenge"
+
+charset ∷ String → StaticProperty
+charset = make "charset"
+
+checked ∷ String → StaticProperty
+checked = make "checked"
+
+cite ∷ String → StaticProperty
+cite = make "cite"
+
+code ∷ String → StaticProperty
+code = make "code"
+
+codebase ∷ String → StaticProperty
+codebase = make "codebase"
+
+color ∷ String → StaticProperty
+color = make "color"
+
+cols ∷ String → StaticProperty
+cols = make "cols"
+
+colspan ∷ String → StaticProperty
+colspan = make "colspan"
+
+content ∷ String → StaticProperty
+content = make "content"
+
+contextmenu ∷ String → StaticProperty
+contextmenu = make "contextmenu"
+
+controls ∷ String → StaticProperty
+controls = make "controls"
+
+coords ∷ String → StaticProperty
+coords = make "coords"
+
+crossorigin ∷ String → StaticProperty
+crossorigin = make "crossorigin"
+
+data_ ∷ String → StaticProperty
+data_ = make "data_"
+
+datetime ∷ String → StaticProperty
+datetime = make "datetime"
+
+default ∷ String → StaticProperty
+default = make "default"
+
+defer ∷ String → StaticProperty
+defer = make "defer"
+
+dirname ∷ String → StaticProperty
+dirname = make "dirname"
+
+disabled ∷ String → StaticProperty
+disabled = make "disabled"
+
+download ∷ String → StaticProperty
+download = make "download"
+
+enctype ∷ String → StaticProperty
+enctype = make "enctype"
+
+for ∷ String → StaticProperty
+for = make "for"
+
+form ∷ String → StaticProperty
+form = make "form"
+
+formaction ∷ String → StaticProperty
+formaction = make "formaction"
+
+headers ∷ String → StaticProperty
+headers = make "headers"
+
+height ∷ String → StaticProperty
+height = make "height"
+
+high ∷ String → StaticProperty
+high = make "high"
+
+href ∷ String → StaticProperty
+href = make "href"
+
+hreflang ∷ String → StaticProperty
+hreflang = make "hreflang"
+
+http ∷ String → StaticProperty
+http = make "http"
+
+icon ∷ String → StaticProperty
+icon = make "icon"
+
+integrity ∷ String → StaticProperty
+integrity = make "integrity"
+
+ismap ∷ String → StaticProperty
+ismap = make "ismap"
+
+keytype ∷ String → StaticProperty
+keytype = make "keytype"
+
+kind ∷ String → StaticProperty
+kind = make "kind"
+
+label ∷ String → StaticProperty
+label = make "label"
+
+language ∷ String → StaticProperty
+language = make "language"
+
+list ∷ String → StaticProperty
+list = make "list"
+
+loop ∷ String → StaticProperty
+loop = make "loop"
+
+low ∷ String → StaticProperty
+low = make "low"
+
+manifest ∷ String → StaticProperty
+manifest = make "manifest"
+
+max ∷ String → StaticProperty
+max = make "max"
+
+maxlength ∷ String → StaticProperty
+maxlength = make "maxlength"
+
+minlength ∷ String → StaticProperty
+minlength = make "minlength"
+
+media ∷ String → StaticProperty
+media = make "media"
+
+method ∷ String → StaticProperty
+method = make "method"
+
+min ∷ String → StaticProperty
+min = make "min"
+
+multiple ∷ String → StaticProperty
+multiple = make "multiple"
+
+muted ∷ String → StaticProperty
+muted = make "muted"
+
+name ∷ String → StaticProperty
+name = make "name"
+
+novalidate ∷ String → StaticProperty
+novalidate = make "novalidate"
+
+open ∷ String → StaticProperty
+open = make "open"
+
+optimum ∷ String → StaticProperty
+optimum = make "optimum"
+
+pattern ∷ String → StaticProperty
+pattern = make "pattern"
+
+ping ∷ String → StaticProperty
+ping = make "ping"
+
+placeholder ∷ String → StaticProperty
+placeholder = make "placeholder"
+
+poster ∷ String → StaticProperty
+poster = make "poster"
+
+preload ∷ String → StaticProperty
+preload = make "preload"
+
+radiogroup ∷ String → StaticProperty
+radiogroup = make "radiogroup"
+
+readonly ∷ String → StaticProperty
+readonly = make "readonly"
+
+rel ∷ String → StaticProperty
+rel = make "rel"
+
+required ∷ String → StaticProperty
+required = make "required"
+
+reversed ∷ String → StaticProperty
+reversed = make "reversed"
+
+rows ∷ String → StaticProperty
+rows = make "rows"
+
+rowspan ∷ String → StaticProperty
+rowspan = make "rowspan"
+
+sandbox ∷ String → StaticProperty
+sandbox = make "sandbox"
+
+scope ∷ String → StaticProperty
+scope = make "scope"
+
+scoped ∷ String → StaticProperty
+scoped = make "scoped"
+
+seamless ∷ String → StaticProperty
+seamless = make "seamless"
+
+selected ∷ String → StaticProperty
+selected = make "selected"
+
+shape ∷ String → StaticProperty
+shape = make "shape"
+
+size ∷ String → StaticProperty
+size = make "size"
+
+sizes ∷ String → StaticProperty
+sizes = make "sizes"
+
+span ∷ String → StaticProperty
+span = make "span"
+
+src ∷ String → StaticProperty
+src = make "src"
+
+srcdoc ∷ String → StaticProperty
+srcdoc = make "srcdoc"
+
+srclang ∷ String → StaticProperty
+srclang = make "srclang"
+
+srcset ∷ String → StaticProperty
+srcset = make "srcset"
+
+start ∷ String → StaticProperty
+start = make "start"
+
+step ∷ String → StaticProperty
+step = make "step"
+
+summary ∷ String → StaticProperty
+summary = make "summary"
+
+target ∷ String → StaticProperty
+target = make "target"
+
+type_ ∷ String → StaticProperty
+type_ = make "type"
+
+usemap ∷ String → StaticProperty
+usemap = make "usemap"
+
+value ∷ String → StaticProperty
+value = make "value"
+
+width ∷ String → StaticProperty
+width = make "width"
+
+wrap ∷ String → StaticProperty
+wrap = make "wrap"

@@ -1,24 +1,23 @@
 module Panda.Bootstrap where
 
-import Control.Alt          ((<|>))
-import Control.Apply        (lift2)
-import Control.Monad.Eff    (Eff)
-import Control.Plus         (empty)
-import DOM.Node.Document    (createElement, createTextNode) as DOM
-import DOM.Node.Node        (appendChild, firstChild, removeChild) as DOM
-import DOM.Node.Types       (Document, Node, elementToNode, textToNode) as DOM
-import Data.Filterable      (filtered)
-import Data.Foldable        (foldr, sequence_)
-import Data.Lazy            (force)
-import Data.Maybe           (Maybe(..))
-import Data.Traversable     (sequence, traverse)
-import FRP.Event            (Event, create, subscribe) as FRP
-import FRP.Event.Class      (fold, withLast) as FRP
-import Panda.Internal.Types as Types
-import Panda.Property       as Property
-import Util.Exists          (runExists3)
-
-import Prelude
+import Control.Alt              ((<|>))
+import Control.Apply            (lift2)
+import Control.Monad.Eff        (Eff)
+import Control.Plus             (empty)
+import DOM.Node.Document        (createElement, createTextNode) as DOM
+import DOM.Node.Node            (appendChild, firstChild, removeChild) as DOM
+import DOM.Node.Types           (Document, Node, elementToNode, textToNode) as DOM
+import Data.Filterable          (filtered)
+import Data.Foldable            (foldr, sequence_)
+import Data.Lazy                (force)
+import Data.Maybe               (Maybe(..))
+import Data.Traversable         (sequence, traverse)
+import FRP.Event                (Event, create, subscribe) as FRP
+import FRP.Event.Class          (fold, withLast) as FRP
+import Panda.Bootstrap.Property as Property
+import Panda.Internal.Types     as Types
+import Prelude                  ((<>), (*>), Unit, bind, discard, map, pure, unit, when)
+import Util.Exists              (runExists3)
 
 -- | Set up and kick off a Panda application. This creates the element tree,
 -- and ties the update handler to the event stream.

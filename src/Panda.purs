@@ -1,4 +1,7 @@
-module Panda where
+module Panda
+  ( module ExportedTypes
+  , runApplication
+  ) where
 
 import Control.Monad.Eff         (Eff)
 import Control.Monad.Eff.Console (log)
@@ -10,6 +13,7 @@ import DOM.HTML.Window           (document) as DOM
 import DOM.Node.Node             (appendChild) as DOM
 import Panda.Bootstrap           (bootstrap)
 import Panda.Internal.Types      as Types
+import Panda.Internal.Types      (Application, Component, Property) as ExportedTypes
 import Prelude
 
 runApplication

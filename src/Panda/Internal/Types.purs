@@ -1,11 +1,11 @@
 module Panda.Internal.Types where
 
-import Control.Monad.Eff (Eff)
-import DOM.Event.Types   (Event) as DOM
-import Data.Lazy         (Lazy)
-import Data.Maybe        (Maybe)
-import FRP.Event         (Event) as FRP
-import Util.Exists       (Exists3)
+import Control.Monad.Eff         (Eff)
+import DOM.Event.Types           (Event) as DOM
+import Data.Lazy                 (Lazy)
+import Data.Maybe                (Maybe)
+import FRP.Event                 (Event) as FRP
+import Util.Exists               (Exists3)
 
 import Prelude
 
@@ -14,7 +14,42 @@ type Canceller eff = Eff eff Unit
 
 -- | Sum type of all sensible event handlers that can be applied to elements.
 data Producer
-  = OnClick
+  = OnAbort
+  | OnBlur
+  | OnChange
+  | OnContextMenu
+  | OnClick
+  | OnDoubleClick
+  | OnDrag
+  | OnDragEnd
+  | OnDragEnter
+  | OnDragExit
+  | OnDragLeave
+  | OnDragOver
+  | OnDragStart
+  | OnDrop
+  | OnError
+  | OnFocus
+  | OnFocusIn
+  | OnFocusOut
+  | OnInput
+  | OnInvalid
+  | OnKeyDown
+  | OnKeyPress
+  | OnKeyUp
+  | OnLoad
+  | OnMouseDown
+  | OnMouseEnter
+  | OnMouseLeave
+  | OnMouseMove
+  | OnMouseOver
+  | OnMouseOut
+  | OnMouseUp
+  | OnReset
+  | OnScroll
+  | OnSelect
+  | OnSubmit
+  | OnTransitionEnd
 
 -- | A static property is just key => value, and can't do anything clever.
 newtype PropertyStatic
@@ -97,8 +132,8 @@ newtype ComponentDelegate eff update state event subupdate substate subevent
   = ComponentDelegate
       { delegate ∷ Application eff subupdate substate subevent
       , focus
-          ∷ { update ∷ update → Maybe subupdate
-            , state  ∷ state → substate
+          ∷ { update ∷ update   → Maybe subupdate
+            , state  ∷ state    → substate
             , event  ∷ subevent → event
             }
       }
