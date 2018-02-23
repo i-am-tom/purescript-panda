@@ -71,7 +71,7 @@ newtype PropertyWatcher update state event
       , state  ∷ state
       }
     → { interest ∷ Boolean
-      , renderer ∷ Lazy (Property update state event)
+      , renderer ∷ Lazy (Maybe String)
       }
   }
 
@@ -155,7 +155,9 @@ data Component eff update state event
 type Application eff update state event
   = { view         ∷ Component eff update state event
     , subscription ∷ FRP.Event event
-    , update       ∷ Maybe { state ∷ state, event ∷ event }
-                   → Eff eff { update ∷ update, state ∷ state }
+    , initial      ∷  { update ∷ update, state ∷ state }
+    , update       ∷ ({ update ∷ update, state ∷ state } → Eff eff Unit)
+                   →  { event  ∷ event,  state ∷ state }
+                   → Eff eff Unit
     }
 

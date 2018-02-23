@@ -36,46 +36,28 @@ bootstrap
           → Types.Canceller _
       }
 
-bootstrap document { view, subscription, update } = do
+bootstrap document { initial, subscription, update, view } = do
   renderedPage ← render document view
-  initialState ← update Nothing
+
+  states     ← FRP.create
+  cancellers ← FRP.create
 
   let
-    prepare ∷ event → Maybe state → Eff _ { update ∷ update , state ∷ state }
-    prepare event state = update (map { state: _, event } state)
+    dispatcher
+      ∷ { state ∷ state, event ∷ event }
+      → Eff _ Unit
+    dispatcher decision = do
+       canceller ← renderedPage.handleUpdate decision
+       states.push decision.state
+       cancellers.push canceller
 
     events ∷ FRP.Event event
     events = subscription <|> renderedPage.events
 
-    -- Compute an update and new state based on an event.
-    loop
-      ∷ (Maybe state → Eff _ { update ∷ update, state ∷ state })
-      → Maybe (Eff _ { update ∷ update, state ∷ state })
-      → Maybe (Eff _ { update ∷ update, state ∷ state })
-    loop updater previous
-      = Just do
-          last ← sequence previous
-          updater (map _.state last)
-
-    loopState = Just (pure initialState)
-
-    updates ∷ FRP.Event (Eff _ { update ∷ update, state ∷ state })
-    updates = filtered (FRP.fold loop (map prepare events) loopState)
-
-    handleUpdate
-      ∷ Eff _ { update ∷ update, state ∷ state }
-      → Types.Canceller _
-    handleUpdate update' = do
-       unwrapped <- update'
-       renderedPage.handleUpdate unwrapped
-
-  cancelApplication ← FRP.subscribe updates handleUpdate
-  handleUpdate (pure initialState)
-
-  pure renderedPage
-    { cancel
-        = renderedPage.cancel *> cancelApplication
-    }
+  -- TODO: sample states whenever `events` fires to get the "current" state. Do
+  -- we need the "state" command to be a state endofunction to avoid race
+  -- conditions?
+  FRP.fold (map prepare event) initial.state
 
 -- | Render the "view" of an application. This is the function that actually
 -- produces the DOM elements, and any rendering of a delegate will call

@@ -2,16 +2,15 @@ module Panda.Bootstrap.Property where
 
 import Control.Monad.Eff         (Eff)
 import Control.Plus              (empty)
-import DOM                       (DOM)
+import Data.Maybe                (Maybe(..))
 import DOM.Event.EventTarget     (addEventListener, eventListener, removeEventListener, EventListener) as DOM
 import DOM.Event.Types           (Event, EventType) as DOM
 import DOM.HTML.Event.EventTypes as DOM.Events
-import DOM.Node.Element          (setAttribute) as DOM
+import DOM.Node.Element          (removeAttribute, setAttribute) as DOM
 import DOM.Node.Types            (Element, elementToEventTarget) as DOM
 import Data.Filterable           (filtered)
 import Data.Foldable             (sequence_)
 import Data.Lazy                 (force)
-import FRP                       (FRP)
 import FRP.Event                 (Event, create, subscribe) as FRP
 import FRP.Event.Class           (withLast) as FRP
 import Panda.Internal.Types      as Types
@@ -176,11 +175,12 @@ render element
               let { interest, renderer } = listener update
 
               when interest do
-                { cancel, events, handleUpdate }
-                    ← render element (force renderer)
+                case force renderer of
+                  Just value →
+                    DOM.setAttribute key value element
 
-                cancelChild ← FRP.subscribe events toOutput
-                registerCanceller (cancel *> cancelChild)
+                  Nothing →
+                    DOM.removeAttribute key element
           }
 
       Types.PProducer (Types.PropertyProducer trigger) → do
