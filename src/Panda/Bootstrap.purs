@@ -7,69 +7,63 @@ import Control.Plus             (empty)
 import DOM.Node.Document        (createElement, createTextNode) as DOM
 import DOM.Node.Node            (appendChild, firstChild, removeChild) as DOM
 import DOM.Node.Types           (Document, Node, elementToNode, textToNode) as DOM
-import Data.Filterable          (filtered)
 import Data.Foldable            (foldr, sequence_)
 import Data.Lazy                (force)
 import Data.Maybe               (Maybe(..))
-import Data.Traversable         (sequence, traverse)
+import Data.Traversable         (traverse)
 import FRP.Event                (Event, create, subscribe) as FRP
-import FRP.Event.Class          (fold, withLast, sampleOn) as FRP
+import FRP.Event.Class          (withLast, sampleOn) as FRP
 import Panda.Bootstrap.Property as Property
 import Panda.Internal.Types     as Types
-import Prelude                  ((<>), (*>), Unit, bind, discard, id, map, pure, unit, when)
+import Prelude                  ((<>), (*>), Unit, bind, discard, map, pure, unit, when)
 import Util.Exists              (runExists3)
-import Debug.Trace              (spy)
 
 -- | Set up and kick off a Panda application. This creates the element tree,
 -- and ties the update handler to the event stream.
 bootstrap
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . DOM.Document
-  → Types.Application _ update state event
-  → Eff _
-      { cancel ∷ Types.Canceller _
+  → Types.Application (Types.FX eff) update state event
+  → Eff (Types.FX eff)
+      { cancel ∷ Types.Canceller (Types.FX eff)
       , events ∷ FRP.Event event
       , element ∷ DOM.Node
       , handleUpdate
           ∷ { update ∷ update
             , state ∷ state
             }
-          → Types.Canceller _
+          → Types.Canceller (Types.FX eff)
       }
 
 bootstrap document { initial, subscription, update, view } = do
   renderedPage ← render document view
-
-  states     ← FRP.create
+  states       ← FRP.create
 
   let
     dispatcher
       ∷ { state ∷ state, update ∷ update }
-      → Eff _ Unit
+      → Eff (Types.FX eff) Unit
     dispatcher decision = do
       states.push decision.state
       renderedPage.handleUpdate decision
 
     events ∷ FRP.Event event
-    events = subscription <|> renderedPage.events
+    events
+      = subscription <|> renderedPage.events
 
-    sampler :: event -> state -> Types.Canceller _
-    sampler event state
-      = update dispatcher (spy { event, state })
-
-    unitUpdates :: FRP.Event (Eff _ Unit)
-    unitUpdates
+    updates ∷ FRP.Event { event ∷ event, state ∷ state }
+    updates
       = FRP.sampleOn
-          (states.event <|> pure initial.state)
-          (map sampler events)
+          (pure initial.state <|> states.event)
+          (map { event: _, state: _ } events)
 
-  cancelApplication <- FRP.subscribe (unitUpdates <|> pure (dispatcher initial)) id
-
+  cancelApplication <- FRP.subscribe updates (update dispatcher)
   dispatcher initial
 
   pure
     ( renderedPage
-        { cancel = renderedPage.cancel *> cancelApplication
+        { cancel = renderedPage.cancel
+                *> cancelApplication
         }
     )
 
@@ -79,18 +73,18 @@ bootstrap document { initial, subscription, update, view } = do
 -- computed.
 
 render
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . DOM.Document
-  → Types.Component _ update state event
-  → Eff _
-      { cancel ∷ Types.Canceller _
+  → Types.Component (Types.FX eff) update state event
+  → Eff (Types.FX eff)
+      { cancel ∷ Types.Canceller (Types.FX eff)
       , events ∷ FRP.Event event
       , element ∷ DOM.Node
       , handleUpdate
           ∷ { update ∷ update
             , state ∷ state
             }
-          → Eff _ Unit
+          → Eff (Types.FX eff) Unit
       }
 
 render document

@@ -2,7 +2,6 @@ module Main where
 
 import Control.Monad.Eff (Eff)
 import Control.Plus      (empty)
-import Data.Maybe        (Maybe(..))
 import Panda             as P
 import Panda.HTML        as PH
 import Panda.Property    as PP
@@ -14,9 +13,7 @@ data NumberPickerEvent
   | NumberPickerDecrement
 
 
-view
-  ∷ ∀ eff
-  . P.Component eff Unit Int NumberPickerEvent
+view ∷ ∀ eff. P.Component eff Unit Int NumberPickerEvent
 view
   = PH.div_
       [ PH.button
@@ -51,15 +48,15 @@ update dispatcher { event, state }
           NumberPickerDecrement → state - 1
       }
 
-main
-  ∷ Eff _ Unit
+main ∷ ∀ eff. Eff (P.FX eff) Unit
 main
   = P.runApplication
       { view
       , update
       , subscription: empty
-      , initial: { update: unit
-                 , state: 0
-                 }
+      , initial:
+          { update: unit
+          , state: 0
+          }
       }
 

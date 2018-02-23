@@ -109,13 +109,13 @@ producerToEventType
 -- that can be watched for events firing from this node, as well as the `key`
 -- string that was used to register the event.
 attach
-  ∷ ∀ event
+  ∷ ∀ eff event
   . { key     ∷ Types.Producer
     , onEvent ∷ DOM.Event → event
     }
   → DOM.Element
-  → Eff _
-      { listener ∷ DOM.EventListener _
+  → Eff (Types.FX eff)
+      { listener ∷ DOM.EventListener (Types.FX eff)
       , events ∷ FRP.Event event
       }
 
@@ -127,7 +127,10 @@ attach { key, onEvent } element = do
     eventType   = producerToEventType key
     listener    = DOM.eventListener (push <<< onEvent)
 
-  DOM.addEventListener eventType listener false eventTarget
+  DOM.addEventListener
+    eventType
+    listener
+    false eventTarget
 
   pure
       { listener
@@ -137,17 +140,17 @@ attach { key, onEvent } element = do
 -- | Render a Property on a DOM element. This also initialises any
 -- `Watcher`-style listeners.
 render
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . DOM.Element
   → Types.Property update state event
-  → Eff _
-      { cancel ∷ Types.Canceller _
+  → Eff (Types.FX eff)
+      { cancel ∷ Types.Canceller (Types.FX eff)
       , events ∷ FRP.Event event
       , handleUpdate
           ∷ { update ∷ update
             , state  ∷ state
             }
-          → Eff _ Unit
+          → Eff (Types.FX eff) Unit
       }
 
 render element

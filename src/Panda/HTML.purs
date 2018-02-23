@@ -1,13 +1,13 @@
 module Panda.HTML
-  ( module Panda.HTML.Elements
-  , module Panda.HTML.Watchers
+  ( module Elements
+  , module Watchers
 
   , delegate
   ) where
 
 import Data.Maybe           (Maybe)
-import Panda.HTML.Elements
-import Panda.HTML.Watchers
+import Panda.HTML.Elements  as Elements
+import Panda.HTML.Watchers  as Watchers
 import Panda.Internal.Types as Types
 import Prelude              (($))
 import Util.Exists          (mkExists3)
