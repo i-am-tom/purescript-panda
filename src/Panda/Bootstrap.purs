@@ -41,7 +41,6 @@ bootstrap document { initial, subscription, update, view } = do
   renderedPage ← render document view
 
   states     ← FRP.create
-  cancellers ← FRP.create
 
   let
     dispatcher
@@ -49,7 +48,7 @@ bootstrap document { initial, subscription, update, view } = do
       → Eff _ Unit
     dispatcher decision = do
       states.push decision.state
-      cancellers.push (renderedPage.handleUpdate (spy {decision}).decision)
+      renderedPage.handleUpdate decision
 
     events ∷ FRP.Event event
     events = subscription <|> renderedPage.events
@@ -64,16 +63,13 @@ bootstrap document { initial, subscription, update, view } = do
           (states.event <|> pure initial.state)
           (map sampler events)
 
-  cancelCancellers <- FRP.subscribe (FRP.withLast cancellers.event) \{ last } ->
-    sequence_ last
-
   cancelApplication <- FRP.subscribe (unitUpdates <|> pure (dispatcher initial)) id
 
   dispatcher initial
 
   pure
     ( renderedPage
-        { cancel = cancellers.push (pure unit) *> cancelCancellers -- 
+        { cancel = renderedPage.cancel *> cancelApplication
         }
     )
 
