@@ -40,24 +40,16 @@ view
 
 update
   ∷ ∀ eff
-  . Maybe { event ∷ NumberPickerEvent, state ∷ Int }
-  → Eff eff { update ∷ Unit, state ∷ Int }
-update
-  = case _ of
-      Just { event, state } →
-        pure
-          { update: unit
-          , state: case event of
-              NumberPickerIncrement → state + 1
-              NumberPickerDecrement → state - 1
-          }
-
-      Nothing →
-        pure
-          { update: unit
-          , state: 0
-          }
-
+  . ({ update ∷ Unit, state ∷ Int } -> Eff eff Unit)
+  -> { event ∷ NumberPickerEvent, state ∷ Int }
+  → Eff eff Unit
+update dispatcher { event, state }
+  = void $ dispatcher
+      { update: unit
+      , state: case event of
+          NumberPickerIncrement → state + 1
+          NumberPickerDecrement → state - 1
+      }
 
 main
   ∷ Eff _ Unit
@@ -66,5 +58,8 @@ main
       { view
       , update
       , subscription: empty
+      , initial: { update: unit
+                 , state: 0
+                 }
       }
 

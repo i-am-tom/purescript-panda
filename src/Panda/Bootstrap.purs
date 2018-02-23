@@ -13,11 +13,12 @@ import Data.Lazy                (force)
 import Data.Maybe               (Maybe(..))
 import Data.Traversable         (sequence, traverse)
 import FRP.Event                (Event, create, subscribe) as FRP
-import FRP.Event.Class          (fold, withLast) as FRP
+import FRP.Event.Class          (fold, withLast, sampleOn) as FRP
 import Panda.Bootstrap.Property as Property
 import Panda.Internal.Types     as Types
-import Prelude                  ((<>), (*>), Unit, bind, discard, map, pure, unit, when)
+import Prelude                  ((<>), (*>), Unit, bind, discard, id, map, pure, unit, when)
 import Util.Exists              (runExists3)
+import Debug.Trace              (spy)
 
 -- | Set up and kick off a Panda application. This creates the element tree,
 -- and ties the update handler to the event stream.
@@ -44,20 +45,37 @@ bootstrap document { initial, subscription, update, view } = do
 
   let
     dispatcher
-      ∷ { state ∷ state, event ∷ event }
+      ∷ { state ∷ state, update ∷ update }
       → Eff _ Unit
     dispatcher decision = do
-       canceller ← renderedPage.handleUpdate decision
-       states.push decision.state
-       cancellers.push canceller
+      states.push decision.state
+      cancellers.push (renderedPage.handleUpdate (spy {decision}).decision)
 
     events ∷ FRP.Event event
     events = subscription <|> renderedPage.events
 
-  -- TODO: sample states whenever `events` fires to get the "current" state. Do
-  -- we need the "state" command to be a state endofunction to avoid race
-  -- conditions?
-  FRP.fold (map prepare event) initial.state
+    sampler :: event -> state -> Types.Canceller _
+    sampler event state
+      = update dispatcher (spy { event, state })
+
+    unitUpdates :: FRP.Event (Eff _ Unit)
+    unitUpdates
+      = FRP.sampleOn
+          (states.event <|> pure initial.state)
+          (map sampler events)
+
+  cancelCancellers <- FRP.subscribe (FRP.withLast cancellers.event) \{ last } ->
+    sequence_ last
+
+  cancelApplication <- FRP.subscribe (unitUpdates <|> pure (dispatcher initial)) id
+
+  dispatcher initial
+
+  pure
+    ( renderedPage
+        { cancel = cancellers.push (pure unit) *> cancelCancellers -- 
+        }
+    )
 
 -- | Render the "view" of an application. This is the function that actually
 -- produces the DOM elements, and any rendering of a delegate will call
