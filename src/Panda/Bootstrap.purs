@@ -7,13 +7,12 @@ import Control.Plus             (empty)
 import DOM.Node.Document        (createElement, createTextNode) as DOM
 import DOM.Node.Node            (appendChild, firstChild, removeChild) as DOM
 import DOM.Node.Types           (Document, Node, elementToNode, textToNode) as DOM
-import Data.Filterable          (filtered)
 import Data.Foldable            (foldr, sequence_)
 import Data.Lazy                (force)
 import Data.Maybe               (Maybe(..))
-import Data.Traversable         (sequence, traverse)
+import Data.Traversable         (traverse)
 import FRP.Event                (Event, create, subscribe) as FRP
-import FRP.Event.Class          (fold, withLast) as FRP
+import FRP.Event.Class          (fold, withLast, sampleOn) as FRP
 import Panda.Bootstrap.Property as Property
 import Panda.Internal.Types     as Types
 import Prelude                  ((<>), (*>), Unit, bind, discard, map, pure, unit, when)
@@ -22,60 +21,47 @@ import Util.Exists              (runExists3)
 -- | Set up and kick off a Panda application. This creates the element tree,
 -- and ties the update handler to the event stream.
 bootstrap
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . DOM.Document
-  → Types.Application _ update state event
-  → Eff _
-      { cancel ∷ Types.Canceller _
+  → Types.Application (Types.FX eff) update state event
+  → Eff (Types.FX eff)
+      { cancel ∷ Types.Canceller (Types.FX eff)
       , events ∷ FRP.Event event
       , element ∷ DOM.Node
       , handleUpdate
           ∷ { update ∷ update
             , state ∷ state
             }
-          → Types.Canceller _
+          → Types.Canceller (Types.FX eff)
       }
 
-bootstrap document { view, subscription, update } = do
+bootstrap document { initial, subscription, update, view } = do
   renderedPage ← render document view
-  initialState ← update Nothing
+  deltas       ← FRP.create
 
   let
-    prepare ∷ event → Maybe state → Eff _ { update ∷ update , state ∷ state }
-    prepare event state = update (map { state: _, event } state)
+    iterations ∷ FRP.Event { state ∷ state, update ∷ update }
+    iterations = FRP.fold (\delta { state } → delta state) deltas.event initial
+
+    states ∷ FRP.Event { state ∷ state, update ∷ update }
+    states = iterations <|> pure initial
 
     events ∷ FRP.Event event
     events = subscription <|> renderedPage.events
 
-    -- Compute an update and new state based on an event.
     loop
-      ∷ (Maybe state → Eff _ { update ∷ update, state ∷ state })
-      → Maybe (Eff _ { update ∷ update, state ∷ state })
-      → Maybe (Eff _ { update ∷ update, state ∷ state })
-    loop updater previous
-      = Just do
-          last ← sequence previous
-          updater (map _.state last)
+      ∷ event
+      → { state ∷ state, update ∷ update }
+      → { state ∷ state, event  ∷ event  }
+    loop event { state } = { event, state }
 
-    loopState = Just (pure initialState)
+    updates ∷ FRP.Event { event ∷ event, state ∷ state }
+    updates = FRP.sampleOn states (map loop events)
 
-    updates ∷ FRP.Event (Eff _ { update ∷ update, state ∷ state })
-    updates = filtered (FRP.fold loop (map prepare events) loopState)
+  cancelApplication ← FRP.subscribe updates (update deltas.push)
+  let cancel = renderedPage.cancel *> cancelApplication
 
-    handleUpdate
-      ∷ Eff _ { update ∷ update, state ∷ state }
-      → Types.Canceller _
-    handleUpdate update' = do
-       unwrapped <- update'
-       renderedPage.handleUpdate unwrapped
-
-  cancelApplication ← FRP.subscribe updates handleUpdate
-  handleUpdate (pure initialState)
-
-  pure renderedPage
-    { cancel
-        = renderedPage.cancel *> cancelApplication
-    }
+  pure (renderedPage { cancel = cancel })
 
 -- | Render the "view" of an application. This is the function that actually
 -- produces the DOM elements, and any rendering of a delegate will call
@@ -83,18 +69,18 @@ bootstrap document { view, subscription, update } = do
 -- computed.
 
 render
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . DOM.Document
-  → Types.Component _ update state event
-  → Eff _
-      { cancel ∷ Types.Canceller _
+  → Types.Component (Types.FX eff) update state event
+  → Eff (Types.FX eff)
+      { cancel ∷ Types.Canceller (Types.FX eff)
       , events ∷ FRP.Event event
       , element ∷ DOM.Node
       , handleUpdate
           ∷ { update ∷ update
             , state ∷ state
             }
-          → Eff _ Unit
+          → Eff (Types.FX eff) Unit
       }
 
 render document

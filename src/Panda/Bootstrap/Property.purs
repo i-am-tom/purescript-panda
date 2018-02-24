@@ -2,16 +2,15 @@ module Panda.Bootstrap.Property where
 
 import Control.Monad.Eff         (Eff)
 import Control.Plus              (empty)
-import DOM                       (DOM)
+import Data.Maybe                (Maybe(..))
 import DOM.Event.EventTarget     (addEventListener, eventListener, removeEventListener, EventListener) as DOM
 import DOM.Event.Types           (Event, EventType) as DOM
 import DOM.HTML.Event.EventTypes as DOM.Events
-import DOM.Node.Element          (setAttribute) as DOM
+import DOM.Node.Element          (removeAttribute, setAttribute) as DOM
 import DOM.Node.Types            (Element, elementToEventTarget) as DOM
 import Data.Filterable           (filtered)
 import Data.Foldable             (sequence_)
 import Data.Lazy                 (force)
-import FRP                       (FRP)
 import FRP.Event                 (Event, create, subscribe) as FRP
 import FRP.Event.Class           (withLast) as FRP
 import Panda.Internal.Types      as Types
@@ -110,13 +109,13 @@ producerToEventType
 -- that can be watched for events firing from this node, as well as the `key`
 -- string that was used to register the event.
 attach
-  ∷ ∀ event
+  ∷ ∀ eff event
   . { key     ∷ Types.Producer
     , onEvent ∷ DOM.Event → event
     }
   → DOM.Element
-  → Eff _
-      { listener ∷ DOM.EventListener _
+  → Eff (Types.FX eff)
+      { listener ∷ DOM.EventListener (Types.FX eff)
       , events ∷ FRP.Event event
       }
 
@@ -128,7 +127,10 @@ attach { key, onEvent } element = do
     eventType   = producerToEventType key
     listener    = DOM.eventListener (push <<< onEvent)
 
-  DOM.addEventListener eventType listener false eventTarget
+  DOM.addEventListener
+    eventType
+    listener
+    false eventTarget
 
   pure
       { listener
@@ -138,17 +140,17 @@ attach { key, onEvent } element = do
 -- | Render a Property on a DOM element. This also initialises any
 -- `Watcher`-style listeners.
 render
-  ∷ ∀ update state event
+  ∷ ∀ eff update state event
   . DOM.Element
   → Types.Property update state event
-  → Eff _
-      { cancel ∷ Types.Canceller _
+  → Eff (Types.FX eff)
+      { cancel ∷ Types.Canceller (Types.FX eff)
       , events ∷ FRP.Event event
       , handleUpdate
           ∷ { update ∷ update
             , state  ∷ state
             }
-          → Eff _ Unit
+          → Eff (Types.FX eff) Unit
       }
 
 render element
@@ -176,11 +178,12 @@ render element
               let { interest, renderer } = listener update
 
               when interest do
-                { cancel, events, handleUpdate }
-                    ← render element (force renderer)
+                case force renderer of
+                  Just value →
+                    DOM.setAttribute key value element
 
-                cancelChild ← FRP.subscribe events toOutput
-                registerCanceller (cancel *> cancelChild)
+                  Nothing →
+                    DOM.removeAttribute key element
           }
 
       Types.PProducer (Types.PropertyProducer trigger) → do
