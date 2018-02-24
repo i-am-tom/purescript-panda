@@ -1,9 +1,12 @@
 module Panda.Internal.Types where
 
+import Control.Alt               ((<|>))
 import Control.Monad.Eff         (Eff)
-import DOM (DOM)
-import FRP (FRP)
+import Control.Plus              (empty)
+import DOM                       (DOM)
+import FRP                       (FRP)
 import Control.Monad.Eff.Console (CONSOLE)
+import Data.Monoid               (class Monoid, mempty)
 import DOM.Event.Types           (Event) as DOM
 import Data.Lazy                 (Lazy)
 import Data.Maybe                (Maybe)
@@ -84,15 +87,15 @@ newtype PropertyStatic
 -- during initial render).
 newtype PropertyWatcher update state event
   = PropertyWatcher
-  { key ∷ String
-  , listener ∷
-      { update ∷ update
-      , state  ∷ state
+      { key ∷ String
+      , listener ∷
+          { update ∷ update
+          , state  ∷ state
+          }
+        → { interest ∷ Boolean
+          , renderer ∷ Lazy (Maybe String)
+          }
       }
-    → { interest ∷ Boolean
-      , renderer ∷ Lazy (Maybe String)
-      }
-  }
 
 -- | A producer is a property that... well, produces events! These properties
 -- are indexed by `Producer` values. Using the producer helpers will do you a
@@ -168,6 +171,29 @@ data Component eff update state event
 
 ---
 
+newtype EventSystem eff update state event
+  = EventSystem
+      { cancel       ∷ Canceller eff
+      , events       ∷ FRP.Event event
+      , handleUpdate ∷ update → Canceller eff
+      }
+
+instance semigroupEventSystem ∷ Semigroup (EventSystem f u s e) where
+  append (EventSystem this) (EventSystem that)
+    = EventSystem
+        { events: this.events <|> that.events
+        , cancel: this.cancel *> that.cancel
+        , handleUpdate: this.handleUpdate <> that.handleUpdate
+        }
+
+instance monoidEventSystem ∷ Monoid (EventSystem f u s e) where
+  mempty
+    = EventSystem
+        { events: empty
+        , cancel: mempty
+        , handleUpdate: mempty
+        }
+
 -- | A specification for a contained Panda application: it must have a view
 -- (what are we going to display?), a subscription (what events are we going to
 -- generate and/or be interested in?) and an update method (how are we going to
@@ -178,12 +204,8 @@ type Application eff update state event
   = { view         ∷ Component eff update state event
     , subscription ∷ FRP.Event event
     , initial      ∷ { update ∷ update, state ∷ state }
-    , update       ∷ ( ( state
-                       → { update ∷ update, state ∷ state }
-                       )
-                     → Eff eff Unit
-                     )
-                   → { event  ∷ event,  state ∷ state }
+    , update       ∷ ((state → { update ∷ update, state ∷ state }) → Eff eff Unit)
+                   → { event ∷ event, state ∷ state }
                    → Eff eff Unit
     }
 

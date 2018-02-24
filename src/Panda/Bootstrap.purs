@@ -1,16 +1,15 @@
 module Panda.Bootstrap where
 
 import Control.Alt              ((<|>))
-import Control.Apply            (lift2)
 import Control.Monad.Eff        (Eff)
 import Control.Plus             (empty)
 import DOM.Node.Document        (createElement, createTextNode) as DOM
 import DOM.Node.Node            (appendChild, firstChild, removeChild) as DOM
 import DOM.Node.Types           (Document, Node, elementToNode, textToNode) as DOM
-import Data.Foldable            (foldr, sequence_)
+import Data.Foldable            (foldMap, sequence_)
 import Data.Lazy                (force)
 import Data.Maybe               (Maybe(..))
-import Data.Traversable         (traverse)
+import Data.Traversable         (for, traverse)
 import FRP.Event                (Event, create, subscribe) as FRP
 import FRP.Event.Class          (fold, withLast, sampleOn) as FRP
 import Panda.Bootstrap.Property as Property
@@ -44,7 +43,7 @@ bootstrap document { initial, subscription, update, view } = do
     iterations = FRP.fold (\delta { state } → delta state) deltas.event initial
 
     states ∷ FRP.Event { state ∷ state, update ∷ update }
-    states = iterations <|> pure initial
+    states = pure initial <|> iterations
 
     events ∷ FRP.Event event
     events = subscription <|> renderedPage.events
@@ -58,8 +57,12 @@ bootstrap document { initial, subscription, update, view } = do
     updates ∷ FRP.Event { event ∷ event, state ∷ state }
     updates = FRP.sampleOn states (map loop events)
 
+  cancelRenderer    ← FRP.subscribe states renderedPage.handleUpdate
   cancelApplication ← FRP.subscribe updates (update deltas.push)
-  let cancel = renderedPage.cancel *> cancelApplication
+
+  let cancel = renderedPage.cancel
+                 *> cancelRenderer
+                 *> cancelApplication
 
   pure (renderedPage { cancel = cancel })
 
@@ -99,38 +102,15 @@ render document
         parent ← DOM.createElement tagName document
         renderedProps ← traverse (Property.render parent) properties
 
-        let
-          prepare child = do
-            { cancel, events, element, handleUpdate }
-                ← render document child
+        prepared ← for children \child → do
+          { cancel, events, element, handleUpdate }
+              ← render document child
 
-            _ ← DOM.appendChild element (DOM.elementToNode parent)
-            pure { cancel, events, handleUpdate }
+          _ ← DOM.appendChild element (DOM.elementToNode parent)
+          pure { cancel, events, handleUpdate }
 
-          -- TODO: monoidalise this.
-          combineEventSystems
-            = lift2 \this that →
-                { handleUpdate: \update → do
-                    this.handleUpdate update
-                    that.handleUpdate update
-
-                , events: this.events <|> that.events
-                , cancel: this.cancel *> that.cancel
-                }
-
-          initial
-            = pure
-                { cancel: pure unit
-                , events: empty
-                , handleUpdate: \_ → pure unit
-                }
-
-          combinables
-            =  map prepare children
-            <> map pure renderedProps
-
-        aggregated
-          ← foldr combineEventSystems initial combinables
+        let (Types.EventSystem aggregated)
+              = foldMap Types.EventSystem (prepared <> renderedProps)
 
         pure
           { cancel: aggregated.cancel

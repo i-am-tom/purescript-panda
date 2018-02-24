@@ -22,9 +22,9 @@ runApplication
   → Eff (Types.FX eff) Unit
 
 runApplication configuration = do
-  window ← DOM.window
+  window   ← DOM.window
   document ← DOM.document window
-  bodyish ← DOM.body document
+  bodyish  ← DOM.body document
 
   { cancel, events, element, handleUpdate }
       ← bootstrap
