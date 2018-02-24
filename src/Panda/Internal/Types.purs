@@ -177,9 +177,13 @@ data Component eff update state event
 type Application eff update state event
   = { view         ∷ Component eff update state event
     , subscription ∷ FRP.Event event
-    , initial      ∷  { update ∷ update, state ∷ state }
-    , update       ∷ ({ update ∷ update, state ∷ state } → Eff eff Unit)
-                   →  { event  ∷ event,  state ∷ state }
+    , initial      ∷ { update ∷ update, state ∷ state }
+    , update       ∷ ( ( state
+                       → { update ∷ update, state ∷ state }
+                       )
+                     → Eff eff Unit
+                     )
+                   → { event  ∷ event,  state ∷ state }
                    → Eff eff Unit
     }
 

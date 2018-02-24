@@ -12,7 +12,7 @@ import Data.Lazy                (force)
 import Data.Maybe               (Maybe(..))
 import Data.Traversable         (traverse)
 import FRP.Event                (Event, create, subscribe) as FRP
-import FRP.Event.Class          (withLast, sampleOn) as FRP
+import FRP.Event.Class          (fold, withLast, sampleOn) as FRP
 import Panda.Bootstrap.Property as Property
 import Panda.Internal.Types     as Types
 import Prelude                  ((<>), (*>), Unit, bind, discard, map, pure, unit, when)
@@ -37,35 +37,31 @@ bootstrap
 
 bootstrap document { initial, subscription, update, view } = do
   renderedPage ← render document view
-  states       ← FRP.create
+  deltas       ← FRP.create
 
   let
-    dispatcher
-      ∷ { state ∷ state, update ∷ update }
-      → Eff (Types.FX eff) Unit
-    dispatcher decision = do
-      states.push decision.state
-      renderedPage.handleUpdate decision
+    iterations ∷ FRP.Event { state ∷ state, update ∷ update }
+    iterations = FRP.fold (\delta { state } → delta state) deltas.event initial
+
+    states ∷ FRP.Event { state ∷ state, update ∷ update }
+    states = iterations <|> pure initial
 
     events ∷ FRP.Event event
-    events
-      = subscription <|> renderedPage.events
+    events = subscription <|> renderedPage.events
+
+    loop
+      ∷ event
+      → { state ∷ state, update ∷ update }
+      → { state ∷ state, event  ∷ event  }
+    loop event { state } = { event, state }
 
     updates ∷ FRP.Event { event ∷ event, state ∷ state }
-    updates
-      = FRP.sampleOn
-          (pure initial.state <|> states.event)
-          (map { event: _, state: _ } events)
+    updates = FRP.sampleOn states (map loop events)
 
-  cancelApplication <- FRP.subscribe updates (update dispatcher)
-  dispatcher initial
+  cancelApplication ← FRP.subscribe updates (update deltas.push)
+  let cancel = renderedPage.cancel *> cancelApplication
 
-  pure
-    ( renderedPage
-        { cancel = renderedPage.cancel
-                *> cancelApplication
-        }
-    )
+  pure (renderedPage { cancel = cancel })
 
 -- | Render the "view" of an application. This is the function that actually
 -- produces the DOM elements, and any rendering of a delegate will call

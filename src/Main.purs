@@ -37,11 +37,11 @@ view
 
 update
   ∷ ∀ eff
-  . ({ update ∷ Unit, state ∷ Int } -> Eff eff Unit)
-  -> { event ∷ NumberPickerEvent, state ∷ Int }
+  . ((Int → { update ∷ Unit, state ∷ Int }) → Eff eff Unit)
+  → { event ∷ NumberPickerEvent, state ∷ Int }
   → Eff eff Unit
 update dispatcher { event, state }
-  = void $ dispatcher
+  = void $ dispatcher \_ →
       { update: unit
       , state: case event of
           NumberPickerIncrement → state + 1
