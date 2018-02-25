@@ -1,10 +1,14 @@
-module Panda.Property where
+module Panda.Property
+  ( module Panda.Property
+  , module Watchers
+  ) where
 
-import DOM.Event.Types      (Event, FocusEvent, InputEvent, KeyboardEvent, MouseEvent, TouchEvent, WheelEvent) as DOM
-import DOM.HTML.Event.Types (DragEvent, ErrorEvent) as DOM
-import Data.Maybe           (Maybe(..))
-import Panda.Internal.Types as Types
-import Unsafe.Coerce        (unsafeCoerce)
+import DOM.Event.Types         (Event, FocusEvent, InputEvent, KeyboardEvent, MouseEvent, TouchEvent, WheelEvent) as DOM
+import DOM.HTML.Event.Types    (DragEvent, ErrorEvent) as DOM
+import Data.Maybe              (Maybe(..))
+import Panda.Internal.Types    as Types
+import Panda.Property.Watchers as Watchers
+import Unsafe.Coerce           (unsafeCoerce)
 
 import Prelude
 
