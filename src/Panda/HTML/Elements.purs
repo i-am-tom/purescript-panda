@@ -1,7 +1,6 @@
 module Panda.HTML.Elements where
 
 import Panda.Internal.Types as Types
-import Prelude              (($))
 
 type StaticElement
   = ∀ eff update state event
@@ -19,11 +18,12 @@ make
   → StaticElement
 make tagName properties children
   = Types.CStatic
-      $ Types.ComponentStatic
+      ( Types.ComponentStatic
           { properties
           , children
           , tagName
           }
+      )
 
 a ∷ StaticElement
 a = make "a"

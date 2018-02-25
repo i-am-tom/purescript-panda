@@ -2,7 +2,6 @@ module Panda.HTML.Watchers where
 
 import Data.Lazy            (defer)
 import Panda.Internal.Types as Types
-import Prelude              (($))
 
 watchAny
   ∷ ∀ eff update state event
@@ -12,7 +11,8 @@ watchAny
   → Types.Component eff update state event
 watchAny renderer
   = Types.CWatcher
-      $ Types.ComponentWatcher \update →
+      ( Types.ComponentWatcher \update →
           { interest: true
           , renderer: defer \_ → renderer update
           }
+      )

@@ -1,11 +1,12 @@
 module Panda.Property where
 
-import Data.Maybe           (Maybe(..))
 import DOM.Event.Types      (Event, FocusEvent, InputEvent, KeyboardEvent, MouseEvent, TouchEvent, WheelEvent) as DOM
 import DOM.HTML.Event.Types (DragEvent, ErrorEvent) as DOM
+import Data.Maybe           (Maybe(..))
 import Panda.Internal.Types as Types
-import Prelude              (($), (<<<), id)
 import Unsafe.Coerce        (unsafeCoerce)
+
+import Prelude
 
 -- Event conversions
 

@@ -1,17 +1,16 @@
 module Panda.Internal.Types where
 
-import Control.Alt               ((<|>))
-import Control.Monad.Eff         (Eff)
-import Control.Plus              (empty)
-import DOM                       (DOM)
-import FRP                       (FRP)
-import Control.Monad.Eff.Console (CONSOLE)
-import Data.Monoid               (class Monoid, mempty)
-import DOM.Event.Types           (Event) as DOM
-import Data.Lazy                 (Lazy)
-import Data.Maybe                (Maybe)
-import FRP.Event                 (Event) as FRP
-import Util.Exists               (Exists3)
+import Control.Alt       ((<|>))
+import Control.Monad.Eff (Eff)
+import Control.Plus      (empty)
+import DOM               (DOM)
+import DOM.Event.Types   (Event) as DOM
+import Data.Lazy         (Lazy)
+import Data.Maybe        (Maybe)
+import Data.Monoid       (class Monoid, mempty)
+import FRP               (FRP)
+import FRP.Event         (Event) as FRP
+import Util.Exists       (Exists3)
 
 import Prelude
 
@@ -19,17 +18,17 @@ import Prelude
 -- the global signature until the effect row goes...
 type FX eff
   = ( dom ∷ DOM
-    , console ∷ CONSOLE
     , frp ∷ FRP
     | eff
     )
 
--- | A canceller cancels somem event handler.
+-- | A canceller cancels some event handler.
 type Canceller eff
   = Eff eff Unit
 
 -- | Sum type of all sensible event handlers that can be applied to elements.
--- Full disclosure: I stole this list from Nate Faubion's purescript-spork
+-- Full disclosure: I stole this list from Nate Faubion's wonderful
+-- [purescript-spork](https://pursuit.purescript.org/packages/purescript-spork/)
 -- library.
 data Producer
   = OnAbort
@@ -69,7 +68,6 @@ data Producer
   | OnSubmit
   | OnTransitionEnd
 
----
 
 -- | A static property is just key => value, and can't do anything clever. This
 -- should be used whenever you want to use a property that won't be affectted
@@ -80,11 +78,10 @@ newtype PropertyStatic
       , value ∷ String
       }
 
--- | A watcher property can vary depending on the state and most recent update,
--- which allows properties to respond to events. `interest` is a flag that
--- allows a property to say whether it is going to do anything useful (and
--- whether it's worth calling the `renderer`), though this may be ignored (e.g.
--- during initial render).
+-- | A `Watcher` property can vary depending on the state and most recent
+-- update, which allows properties to respond to events. `interest` is a flag
+-- that allows a property to say whether it is going to do anything useful (and
+-- whether it's worth calling the `renderer`).
 newtype PropertyWatcher update state event
   = PropertyWatcher
       { key ∷ String
@@ -100,7 +97,8 @@ newtype PropertyWatcher update state event
 -- | A producer is a property that... well, produces events! These properties
 -- are indexed by `Producer` values. Using the producer helpers will do you a
 -- lot of favours, as the event has already been coerced to the type
--- appropriate to that particular DOM action.
+-- appropriate to that particular DOM action. A particular DOM event can be
+-- ignored if `onEvent` returns a `Nothing`.
 newtype PropertyProducer event
   = PropertyProducer
       { key     ∷ Producer
@@ -114,7 +112,6 @@ data Property update state event
   | PWatcher  (PropertyWatcher  update state event)
   | PProducer (PropertyProducer              event)
 
----
 
 -- | A static component is one that has properties and potentially houses other
 -- components. These are the things you _actually_ render to the DOM, and that
@@ -133,9 +130,7 @@ newtype ComponentStatic eff update state event
 -- recommended that, the more common the watcher's interest, the lower in the
 -- component tree it should occur. If an event is likely to be fired every
 -- second and that will cause the re-rendering of the entire tree, performance
--- won't be great. Similarly to the `PropertyWatcher`, the `interest` flag is
--- an indication to the renderer: it may be ignored, as is the case in the
--- initial render.
+-- won't be great.
 newtype ComponentWatcher eff update state event
   = ComponentWatcher
       ( { update ∷ update
@@ -146,11 +141,11 @@ newtype ComponentWatcher eff update state event
         }
       )
 
--- Applications can be nested arbitrarily, with the proviso that there is some
--- way to translate from "parent" to "child". The actual types of the child are
--- existential, and are thus not carried up the tree: "as long as you can tell
--- me how to convert updates and states for the child, and then 'unconvert'
--- events from the child, I can embed this application".
+-- | Applications can be nested arbitrarily, with the proviso that there is
+-- some way to translate from "parent" to "child". The actual types of the
+-- child are existential, and are thus not carried up the tree: "as long as you
+-- can tell me how to convert updates and states for the child, and then
+-- 'unconvert' events from the child, I can embed this application".
 newtype ComponentDelegate eff update state event subupdate substate subevent
   = ComponentDelegate
       { delegate ∷ Application eff subupdate substate subevent
@@ -169,16 +164,23 @@ data Component eff update state event
   | CDelegate (Exists3 (ComponentDelegate eff update state event))
   | CText String
 
----
 
+-- When `Component` or `Property` structures are rendered, an element is
+-- created, along with a system for handling events. This structure houses that
+-- system as a monoid, so that they can be combined more easily.
 newtype EventSystem eff update state event
   = EventSystem
       { cancel       ∷ Canceller eff
       , events       ∷ FRP.Event event
-      , handleUpdate ∷ update → Canceller eff
+      , handleUpdate
+          ∷ { update ∷ update
+            , state  ∷ state
+            }
+          → Canceller eff
       }
 
-instance semigroupEventSystem ∷ Semigroup (EventSystem f u s e) where
+instance semigroupEventSystem
+    ∷ Semigroup (EventSystem eff update state event) where
   append (EventSystem this) (EventSystem that)
     = EventSystem
         { events: this.events <|> that.events
@@ -186,7 +188,8 @@ instance semigroupEventSystem ∷ Semigroup (EventSystem f u s e) where
         , handleUpdate: this.handleUpdate <> that.handleUpdate
         }
 
-instance monoidEventSystem ∷ Monoid (EventSystem f u s e) where
+instance monoidEventSystem
+    ∷ Monoid (EventSystem eff update state event) where
   mempty
     = EventSystem
         { events: empty
@@ -194,12 +197,14 @@ instance monoidEventSystem ∷ Monoid (EventSystem f u s e) where
         , handleUpdate: mempty
         }
 
--- | A specification for a contained Panda application: it must have a view
--- (what are we going to display?), a subscription (what events are we going to
--- generate and/or be interested in?) and an update method (how are we going to
--- interpret those **events** into **updates** for the DOM?) The `update` type
--- is quite noisy, but it boils down to a function that can dispatch _updates_,
--- and a primary event.
+-- | To create a Panda application, you must specify a view, a controller, and
+-- an initial state (as well as the initial update that will fire on render).
+-- `subscription` allows you to subscribe to external events (but can be
+-- ignored using `Control.Plus.empty`. `update` takes a `dispatch` function for
+-- updates, and the event that triggered it in the first place. Note the
+-- `dispatch` function takes a _function_ from state - this function guarantees
+-- that your modifications will be applied to the most recent state. This is
+-- helpful when your `update` function gets asynchronous.
 type Application eff update state event
   = { view         ∷ Component eff update state event
     , subscription ∷ FRP.Event event

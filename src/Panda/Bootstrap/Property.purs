@@ -1,9 +1,9 @@
-module Panda.Bootstrap.Property where
+module Panda.Bootstrap.Property
+  ( render
+  ) where
 
 import Control.Monad.Eff         (Eff)
 import Control.Plus              (empty)
-import Data.Maybe                (Maybe(..))
-import Data.Monoid               (mempty)
 import DOM.Event.EventTarget     (addEventListener, eventListener, removeEventListener, EventListener) as DOM
 import DOM.Event.Types           (Event, EventType) as DOM
 import DOM.HTML.Event.EventTypes as DOM.Events
@@ -12,17 +12,18 @@ import DOM.Node.Types            (Element, elementToEventTarget) as DOM
 import Data.Filterable           (filtered)
 import Data.Foldable             (sequence_)
 import Data.Lazy                 (force)
+import Data.Maybe                (Maybe(..))
+import Data.Monoid               (mempty)
 import FRP.Event                 (Event, create, subscribe) as FRP
 import FRP.Event.Class           (withLast) as FRP
 import Panda.Internal.Types      as Types
+
 import Prelude
 
 -- | Given a Producer, return the string that identifies it when adding an
--- event handler.
-producerToString
-  ∷ Types.Producer
-  → String
-
+-- event handler. This is also the string we use for the attribute when we
+-- attach it to the DOM.
+producerToString ∷ Types.Producer → String
 producerToString
   = case _ of
       Types.OnAbort         → "abort"
@@ -62,11 +63,9 @@ producerToString
       Types.OnSubmit        → "submit"
       Types.OnTransitionEnd → "transitionend"
 
--- | Convert a Producer into a regular DOM event.
-producerToEventType
-  ∷ Types.Producer
-  → DOM.EventType
-
+-- | Convert a Producer into a regular DOM event. This is used to produce an
+-- EventTarget.
+producerToEventType ∷ Types.Producer → DOM.EventType
 producerToEventType
   = case _ of
       Types.OnAbort         → DOM.Events.abort
@@ -126,33 +125,18 @@ attach { key, onEvent } element = do
   let
     eventTarget = DOM.elementToEventTarget element
     eventType   = producerToEventType key
-    listener    = DOM.eventListener (push <<< onEvent)
+    listener    = DOM.eventListener \e → push (onEvent e)
 
-  DOM.addEventListener
-    eventType
-    listener
-    false eventTarget
+  DOM.addEventListener eventType listener false eventTarget
+  pure { listener, events }
 
-  pure
-      { listener
-      , events
-      }
-
--- | Render a Property on a DOM element. This also initialises any
--- `Watcher`-style listeners.
+-- | Render a Property on a DOM element. This also initialises any `Watcher`
+-- components, and sets up their event handlers and cancellers.
 render
   ∷ ∀ eff update state event
   . DOM.Element
   → Types.Property update state event
-  → Eff (Types.FX eff)
-      { cancel ∷ Types.Canceller (Types.FX eff)
-      , events ∷ FRP.Event event
-      , handleUpdate
-          ∷ { update ∷ update
-            , state  ∷ state
-            }
-          → Eff (Types.FX eff) Unit
-      }
+  → Eff (Types.FX eff) (Types.EventSystem (Types.FX eff) update state event)
 
 render element
   = case _ of
@@ -160,10 +144,12 @@ render element
         DOM.setAttribute key value element
 
         pure
-          { cancel: pure unit
-          , events: empty
-          , handleUpdate: mempty
-          }
+          ( Types.EventSystem
+              { cancel: mempty
+              , events: empty
+              , handleUpdate: mempty
+              }
+          )
 
       Types.PWatcher (Types.PropertyWatcher { key, listener }) → do
         { event: output,     push: toOutput }          ← FRP.create
@@ -173,19 +159,21 @@ render element
           sequence_ last
 
         pure
-          { cancel: registerCanceller (pure unit) *> cancelIteration
-          , events: output
-          , handleUpdate: \update → do
-              let { interest, renderer } = listener update
+          ( Types.EventSystem
+              { cancel: registerCanceller (pure unit) *> cancelIteration
+              , events: output
+              , handleUpdate: \update → do
+                  let { interest, renderer } = listener update
 
-              when interest do
-                case force renderer of
-                  Just value →
-                    DOM.setAttribute key value element
+                  when interest do
+                    case force renderer of
+                      Just value →
+                        DOM.setAttribute key value element
 
-                  Nothing →
-                    DOM.removeAttribute key element
-          }
+                      Nothing →
+                        DOM.removeAttribute key element
+              }
+          )
 
       Types.PProducer (Types.PropertyProducer trigger) → do
         { listener, events } ← attach trigger element
@@ -195,8 +183,10 @@ render element
           eventType   = producerToEventType trigger.key
 
         pure
-          { cancel: DOM.removeEventListener
-              eventType listener false eventTarget
-          , events: filtered events
-          , handleUpdate: \_ → pure unit
-          }
+          ( Types.EventSystem
+              { cancel: DOM.removeEventListener
+                  eventType listener false eventTarget
+              , events: filtered events
+              , handleUpdate: \_ → pure unit
+              }
+          )

@@ -6,7 +6,7 @@ import Control.Plus             (empty)
 import DOM.Node.Document        (createElement, createTextNode) as DOM
 import DOM.Node.Node            (appendChild, firstChild, removeChild) as DOM
 import DOM.Node.Types           (Document, Node, elementToNode, textToNode) as DOM
-import Data.Foldable            (foldMap, sequence_)
+import Data.Foldable            (fold, sequence_)
 import Data.Lazy                (force)
 import Data.Maybe               (Maybe(..))
 import Data.Monoid              (mempty)
@@ -15,8 +15,9 @@ import FRP.Event                (Event, create, subscribe) as FRP
 import FRP.Event.Class          (fold, withLast, sampleOn) as FRP
 import Panda.Bootstrap.Property as Property
 import Panda.Internal.Types     as Types
-import Prelude                  ((<>), (*>), Unit, bind, discard, map, pure, unit, when)
 import Util.Exists              (runExists3)
+
+import Prelude
 
 -- | Set up and kick off a Panda application. This creates the element tree,
 -- and ties the update handler to the event stream.
@@ -116,10 +117,10 @@ render document
               ← render document child
 
           _ ← DOM.appendChild element (DOM.elementToNode parent)
-          pure { cancel, events, handleUpdate }
+          pure (Types.EventSystem { cancel, events, handleUpdate })
 
         let (Types.EventSystem aggregated)
-              = foldMap Types.EventSystem (prepared <> renderedProps)
+              = fold (prepared <> renderedProps)
 
         pure
           { cancel: aggregated.cancel
