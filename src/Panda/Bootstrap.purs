@@ -9,6 +9,7 @@ import DOM.Node.Types           (Document, Node, elementToNode, textToNode) as D
 import Data.Foldable            (foldMap, sequence_)
 import Data.Lazy                (force)
 import Data.Maybe               (Maybe(..))
+import Data.Monoid              (mempty)
 import Data.Traversable         (for, traverse)
 import FRP.Event                (Event, create, subscribe) as FRP
 import FRP.Event.Class          (fold, withLast, sampleOn) as FRP
@@ -39,30 +40,39 @@ bootstrap document { initial, subscription, update, view } = do
   deltas       ← FRP.create
 
   let
-    iterations ∷ FRP.Event { state ∷ state, update ∷ update }
-    iterations = FRP.fold (\delta { state } → delta state) deltas.event initial
+    -- | Iterations of state as updates are applied. The most recent value is
+    -- the current state.
+    states' ∷ FRP.Event { state ∷ state, update ∷ update }
+    states' = FRP.fold (\delta { state } → delta state) deltas.event initial
 
+    -- | Same as states', but will default to the initial state until the first
+    -- delta has been provided.
     states ∷ FRP.Event { state ∷ state, update ∷ update }
-    states = pure initial <|> iterations
+    states = pure initial <|> states'
 
+    -- | Events, either internal or external.
     events ∷ FRP.Event event
     events = subscription <|> renderedPage.events
 
+    -- | Given the most up-to-date state and the event, produce an input for an
+    -- application's `update` function.
     loop
       ∷ event
       → { state ∷ state, update ∷ update }
       → { state ∷ state, event  ∷ event  }
-    loop event { state } = { event, state }
+    loop event { state }
+      = { event, state }
 
-    updates ∷ FRP.Event { event ∷ event, state ∷ state }
-    updates = FRP.sampleOn states (map loop events)
+    -- | The stream of events that trigger the application's `update` function.
+    prepared ∷ FRP.Event { event ∷ event, state ∷ state }
+    prepared = FRP.sampleOn states (map loop events)
 
   cancelRenderer    ← FRP.subscribe states renderedPage.handleUpdate
-  cancelApplication ← FRP.subscribe updates (update deltas.push)
+  cancelApplication ← FRP.subscribe prepared (update deltas.push)
 
-  let cancel = renderedPage.cancel
-                 *> cancelRenderer
-                 *> cancelApplication
+  let cancel = renderedPage.cancel    -- Cancel the listener tree
+                 *> cancelRenderer    -- Cancel the render loop
+                 *> cancelApplication -- Cancel the dispatch loop
 
   pure (renderedPage { cancel = cancel })
 
@@ -91,10 +101,10 @@ render document
         element ← DOM.createTextNode text document
 
         pure
-          { cancel: pure unit
+          { cancel: mempty
           , element: DOM.textToNode element
           , events: empty
-          , handleUpdate: \_ → pure unit
+          , handleUpdate: mempty
           }
 
       Types.CStatic (Types.ComponentStatic { children, properties, tagName }) → do

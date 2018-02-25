@@ -3,6 +3,7 @@ module Panda.Bootstrap.Property where
 import Control.Monad.Eff         (Eff)
 import Control.Plus              (empty)
 import Data.Maybe                (Maybe(..))
+import Data.Monoid               (mempty)
 import DOM.Event.EventTarget     (addEventListener, eventListener, removeEventListener, EventListener) as DOM
 import DOM.Event.Types           (Event, EventType) as DOM
 import DOM.HTML.Event.EventTypes as DOM.Events
@@ -161,7 +162,7 @@ render element
         pure
           { cancel: pure unit
           , events: empty
-          , handleUpdate: \_ → pure unit
+          , handleUpdate: mempty
           }
 
       Types.PWatcher (Types.PropertyWatcher { key, listener }) → do
