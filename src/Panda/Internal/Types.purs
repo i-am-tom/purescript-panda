@@ -5,7 +5,6 @@ import Control.Monad.Eff (Eff)
 import Control.Plus      (empty)
 import DOM               (DOM)
 import DOM.Event.Types   (Event) as DOM
-import Data.Lazy         (Lazy)
 import Data.Maybe        (Maybe)
 import Data.Monoid       (class Monoid, mempty)
 import FRP               (FRP)
@@ -79,19 +78,16 @@ newtype PropertyStatic
       }
 
 -- | A `Watcher` property can vary depending on the state and most recent
--- update, which allows properties to respond to events. `interest` is a flag
--- that allows a property to say whether it is going to do anything useful (and
--- whether it's worth calling the `renderer`).
+-- update, which allows properties to respond to events. Given an update, a
+-- `Watcher` can `Maybe` decide to update the value. This update is either
+-- `Just` the string to which the property should be set, or that it should be
+-- set to `Nothing` (hence the double-`Maybe`).
 newtype PropertyWatcher update state event
   = PropertyWatcher
       { key ∷ String
-      , listener ∷
-          { update ∷ update
-          , state  ∷ state
-          }
-        → { interest ∷ Boolean
-          , renderer ∷ Lazy (Maybe String)
-          }
+      , listener
+          ∷ { update ∷ update , state  ∷ state }
+          → Maybe (Maybe String)
       }
 
 -- | A producer is a property that... well, produces events! These properties
@@ -136,9 +132,7 @@ newtype ComponentWatcher eff update state event
       ( { update ∷ update
         , state  ∷ state
         }
-      → { interest ∷ Boolean
-        , renderer ∷ Lazy (Component eff update state event)
-        }
+      → Maybe (Component eff update state event)
       )
 
 -- | Applications can be nested arbitrarily, with the proviso that there is

@@ -6,7 +6,7 @@ import Control.Plus             (empty)
 import DOM.Node.Document        (createElement, createTextNode) as DOM
 import DOM.Node.Node            (appendChild, firstChild, removeChild) as DOM
 import DOM.Node.Types           (Document, Node, elementToNode, textToNode) as DOM
-import Data.Foldable            (fold, sequence_)
+import Data.Foldable            (fold, for_, sequence_)
 import Data.Lazy                (force)
 import Data.Maybe               (Maybe(..))
 import Data.Monoid              (mempty)
@@ -166,11 +166,11 @@ render document
 
         let
           updater update = do
-            let { interest, renderer } = listener update
+            let possibleUpdate = listener update
 
-            when interest do
+            for_ possibleUpdate \component → do
               { cancel, element, events, handleUpdate }
-                  ← render document (force renderer)
+                  ← render document component
 
               firstChild ← DOM.firstChild parent
 

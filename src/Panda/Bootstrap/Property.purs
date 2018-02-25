@@ -10,8 +10,7 @@ import DOM.HTML.Event.EventTypes as DOM.Events
 import DOM.Node.Element          (removeAttribute, setAttribute) as DOM
 import DOM.Node.Types            (Element, elementToEventTarget) as DOM
 import Data.Filterable           (filtered)
-import Data.Foldable             (sequence_)
-import Data.Lazy                 (force)
+import Data.Foldable             (for_, sequence_)
 import Data.Maybe                (Maybe(..))
 import Data.Monoid               (mempty)
 import FRP.Event                 (Event, create, subscribe) as FRP
@@ -163,10 +162,10 @@ render element
               { cancel: registerCanceller (pure unit) *> cancelIteration
               , events: output
               , handleUpdate: \update → do
-                  let { interest, renderer } = listener update
+                  let renderer = listener update
 
-                  when interest do
-                    case force renderer of
+                  for_ renderer \update →
+                    case update of
                       Just value →
                         DOM.setAttribute key value element
 
