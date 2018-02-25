@@ -19,5 +19,6 @@
     "purescript-console": "^3.0.0",
     "purescript-eff": "^3.1.0",
     "purescript-debug": "^3.0.0"
-  }
+  },
+  "version": "0.1.0"
 }
