@@ -70,7 +70,6 @@ bootstrap document { initial, subscription, update, view } = do
 -- produces the DOM elements, and any rendering of a delegate will call
 -- `bootstrap`. This is also where the event handlers and cancellers are
 -- computed.
-
 render
   ∷ ∀ eff update state event
   . DOM.Document

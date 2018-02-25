@@ -1,9 +1,10 @@
 .psc-ide-port
-.purs-repl
-package-lock.json
 .psc-package
 .pulp-cache
+.purs-repl
+bower_components
+dist.js
 node_modules
 output
-
-bower_components
+package-lock.json
+tags
