@@ -226,6 +226,9 @@ checked = make "checked"
 cite ∷ String → StaticProperty
 cite = make "cite"
 
+className ∷ String → StaticProperty
+className = make "className"
+
 code ∷ String → StaticProperty
 code = make "code"
 
