@@ -168,10 +168,7 @@ render document
           updater update = do
             let possibleUpdate = listener update
 
-            for_ possibleUpdate \component → do
-              { cancel, element, events, handleUpdate }
-                  ← render document component
-
+            for_ possibleUpdate \rerender → do
               firstChild ← DOM.firstChild parent
 
               case firstChild of
@@ -182,10 +179,15 @@ render document
                 Nothing →
                   pure unit
 
-              _ ← DOM.appendChild element parent
+              for rerender \spec → do
+                { cancel, element, events, handleUpdate }
+                    ← render document spec
 
-              cancelEvents ← FRP.subscribe events toOutput
-              registerCanceller (cancel *> cancelEvents)
+
+                _ ← DOM.appendChild element parent
+
+                cancelEvents ← FRP.subscribe events toOutput
+                registerCanceller (cancel *> cancelEvents)
 
         pure
           { cancel: registerCanceller (pure unit) *> cancelWatcher

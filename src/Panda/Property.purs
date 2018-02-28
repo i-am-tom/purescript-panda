@@ -3,8 +3,12 @@ module Panda.Property
   , module Watchers
   ) where
 
+import Control.Monad.Except    (runExcept)
 import DOM.Event.Types         (Event, FocusEvent, InputEvent, KeyboardEvent, MouseEvent, TouchEvent, WheelEvent) as DOM
 import DOM.HTML.Event.Types    (DragEvent, ErrorEvent) as DOM
+import Data.Either             (either)
+import Data.Foreign            (readString, toForeign) as F
+import Data.Foreign.Index      (readProp) as F
 import Data.Maybe              (Maybe(..))
 import Panda.Internal.Types    as Types
 import Panda.Property.Watchers as Watchers
@@ -42,7 +46,7 @@ eventToWheelEvent = unsafeCoerce
 
 type Producer input
   = ∀ update state event
-  . (input → event)
+  . (input → Maybe event)
   → Types.Property update state event
 
 makeProducer
@@ -52,12 +56,12 @@ makeProducer
   → Producer input
 makeProducer key conversion onEvent
   = Types.PProducer
-      $ Types.PropertyProducer
+      ( Types.PropertyProducer
          { key
-          , onEvent: Just
-              <<< onEvent
-              <<< conversion
-          }
+         , onEvent: \ev →
+             onEvent (conversion ev)
+         }
+      )
 
 onAbort ∷ Producer DOM.Event
 onAbort = makeProducer Types.OnAbort id
@@ -113,8 +117,28 @@ onFocusIn = makeProducer Types.OnFocusIn eventToFocusEvent
 onFocusOut ∷ Producer DOM.FocusEvent
 onFocusOut = makeProducer Types.OnFocusOut eventToFocusEvent
 
-onInput ∷ Producer DOM.Event
-onInput = makeProducer Types.OnInput id
+onInput
+  ∷ ∀ update state event
+  . (String → Maybe event)
+  → Types.Property update state event
+onInput handler
+  = Types.PProducer
+      ( Types.PropertyProducer
+          { key: Types.OnInput
+          , onEvent: \ev → either (\_ → Nothing) handler
+              ( runExcept do
+                  let ev' = F.toForeign ev
+
+                  target' ← F.readProp "target" ev'
+                  value'  ← F.readProp "value" target'
+
+                  F.readString value'
+              )
+          }
+      )
+
+onInput' ∷ Producer DOM.Event
+onInput' = makeProducer Types.OnInput id
 
 onInvalid ∷ Producer DOM.Event
 onInvalid = makeProducer Types.OnInvalid id

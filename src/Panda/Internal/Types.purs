@@ -86,7 +86,7 @@ newtype PropertyWatcher update state event
   = PropertyWatcher
       { key ∷ String
       , listener
-          ∷ { update ∷ update , state  ∷ state }
+          ∷ { update ∷ update, state  ∷ state }
           → Maybe (Maybe String)
       }
 
@@ -132,7 +132,7 @@ newtype ComponentWatcher eff update state event
       ( { update ∷ update
         , state  ∷ state
         }
-      → Maybe (Component eff update state event)
+      → Maybe (Maybe (Component eff update state event))
       )
 
 -- | Applications can be nested arbitrarily, with the proviso that there is

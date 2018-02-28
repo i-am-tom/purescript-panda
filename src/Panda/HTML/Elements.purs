@@ -8,6 +8,11 @@ type StaticElement
   → Array (Types.Component eff update state event)
   → Types.Component eff update state event
 
+type SelfClosingElement
+  = ∀ eff update state event
+  . Array (Types.Property update state event)
+  → Types.Component eff update state event
+
 type StaticElementWithoutProperties
   = ∀ eff update state event
   . Array (Types.Component eff update state event)
@@ -55,11 +60,8 @@ applet = make "applet"
 applet_ ∷ StaticElementWithoutProperties
 applet_ = applet []
 
-area ∷ StaticElement
-area = make "area"
-
-area_ ∷ StaticElementWithoutProperties
-area_ = area []
+area ∷ SelfClosingElement
+area props = make "area" props []
 
 article ∷ StaticElement
 article = make "article"
@@ -85,11 +87,8 @@ b = make "b"
 b_ ∷ StaticElementWithoutProperties
 b_ = b []
 
-base ∷ StaticElement
-base = make "base"
-
-base_ ∷ StaticElementWithoutProperties
-base_ = base []
+base ∷ SelfClosingElement
+base props = make "base" props []
 
 basefont ∷ StaticElement
 basefont = make "basefont"
@@ -127,11 +126,8 @@ body = make "body"
 body_ ∷ StaticElementWithoutProperties
 body_ = body []
 
-br ∷ StaticElement
-br = make "br"
-
-br_ ∷ StaticElementWithoutProperties
-br_ = br []
+br ∷ SelfClosingElement
+br props = make "br" props []
 
 button ∷ StaticElement
 button = make "button"
@@ -169,17 +165,17 @@ code = make "code"
 code_ ∷ StaticElementWithoutProperties
 code_ = code []
 
-col ∷ StaticElement
-col = make "col"
-
-col_ ∷ StaticElementWithoutProperties
-col_ = col []
+col ∷ SelfClosingElement
+col props = make "col" props []
 
 colgroup ∷ StaticElement
 colgroup = make "colgroup"
 
 colgroup_ ∷ StaticElementWithoutProperties
 colgroup_ = colgroup []
+
+command ∷ SelfClosingElement
+command props = make "command" props []
 
 datalist ∷ StaticElement
 datalist = make "datalist"
@@ -247,11 +243,8 @@ em = make "em"
 em_ ∷ StaticElementWithoutProperties
 em_ = em []
 
-embed ∷ StaticElement
-embed = make "embed"
-
-embed_ ∷ StaticElementWithoutProperties
-embed_ = embed []
+embed ∷ SelfClosingElement
+embed props = make "embed" props []
 
 fieldset ∷ StaticElement
 fieldset = make "fieldset"
@@ -319,11 +312,8 @@ header = make "header"
 header_ ∷ StaticElementWithoutProperties
 header_ = header []
 
-hr ∷ StaticElement
-hr = make "hr"
-
-hr_ ∷ StaticElementWithoutProperties
-hr_ = hr []
+hr ∷ SelfClosingElement
+hr props = make "hr" props []
 
 html ∷ StaticElement
 html = make "html"
@@ -343,17 +333,11 @@ iframe = make "iframe"
 iframe_ ∷ StaticElementWithoutProperties
 iframe_ = iframe []
 
-img ∷ StaticElement
-img = make "img"
+img ∷ SelfClosingElement
+img props = make "img" props []
 
-img_ ∷ StaticElementWithoutProperties
-img_ = img []
-
-input ∷ StaticElement
-input = make "input"
-
-input_ ∷ StaticElementWithoutProperties
-input_ = input []
+input ∷ SelfClosingElement
+input props = make "input" props []
 
 ins ∷ StaticElement
 ins = make "ins"
@@ -366,6 +350,9 @@ kbd = make "kbd"
 
 kbd_ ∷ StaticElementWithoutProperties
 kbd_ = kbd []
+
+keygen ∷ SelfClosingElement
+keygen props = make "kbd" props []
 
 label ∷ StaticElement
 label = make "label"
@@ -385,11 +372,8 @@ li = make "li"
 li_ ∷ StaticElementWithoutProperties
 li_ = li []
 
-link ∷ StaticElement
-link = make "link"
-
-link_ ∷ StaticElementWithoutProperties
-link_ = link []
+link ∷ SelfClosingElement
+link props = make "link" props []
 
 main ∷ StaticElement
 main = make "main"
@@ -415,17 +399,11 @@ menu = make "menu"
 menu_ ∷ StaticElementWithoutProperties
 menu_ = menu []
 
-menuitem ∷ StaticElement
-menuitem = make "menuitem"
+menuitem ∷ SelfClosingElement
+menuitem props = make "menuitem" props []
 
-menuitem_ ∷ StaticElementWithoutProperties
-menuitem_ = menuitem []
-
-meta ∷ StaticElement
-meta = make "meta"
-
-meta_ ∷ StaticElementWithoutProperties
-meta_ = meta []
+meta ∷ SelfClosingElement
+meta props = make "meta" props []
 
 meter ∷ StaticElement
 meter = make "meter"
@@ -487,11 +465,8 @@ p = make "p"
 p_ ∷ StaticElementWithoutProperties
 p_ = p []
 
-param ∷ StaticElement
-param = make "param"
-
-param_ ∷ StaticElementWithoutProperties
-param_ = param []
+param ∷ SelfClosingElement
+param props = make "param" props []
 
 picture ∷ StaticElement
 picture = make "picture"
@@ -571,11 +546,8 @@ small = make "small"
 small_ ∷ StaticElementWithoutProperties
 small_ = small []
 
-source ∷ StaticElement
-source = make "source"
-
-source_ ∷ StaticElementWithoutProperties
-source_ = source []
+source ∷ SelfClosingElement
+source props = make "source" props []
 
 span ∷ StaticElement
 span = make "span"
@@ -692,11 +664,8 @@ tr = make "tr"
 tr_ ∷ StaticElementWithoutProperties
 tr_ = tr []
 
-track ∷ StaticElement
-track = make "track"
-
-track_ ∷ StaticElementWithoutProperties
-track_ = track []
+track ∷ SelfClosingElement
+track props = make "track" props []
 
 tt ∷ StaticElement
 tt = make "tt"
@@ -728,8 +697,5 @@ video = make "video"
 video_ ∷ StaticElementWithoutProperties
 video_ = video []
 
-wbr ∷ StaticElement
-wbr = make "wbr"
-
-wbr_ ∷ StaticElementWithoutProperties
-wbr_ = wbr []
+wbr ∷ SelfClosingElement
+wbr props = make "wbr" props []
