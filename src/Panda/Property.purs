@@ -43,24 +43,50 @@ eventToWheelEvent ∷ DOM.Event → DOM.WheelEvent
 eventToWheelEvent = unsafeCoerce
 
 -- Event producers
-
 type Producer input
   = ∀ update state event
   . (input → Maybe event)
   → Types.Property update state event
 
+-- | Make a producer with the given handler.
+makeProducer'
+  ∷ ∀ update state event
+  . Types.Producer
+  → (DOM.Event → Maybe event)
+  → Types.Property update state event
+makeProducer' key onEvent
+  = Types.PProducer
+      ( Types.PropertyProducer
+          { key
+          , onEvent
+          }
+      )
+
+-- | Specifically build a producer of a given input type.
 makeProducer
   ∷ ∀ input
   . Types.Producer
   → (DOM.Event → input)
   → Producer input
 makeProducer key conversion onEvent
-  = Types.PProducer
-      ( Types.PropertyProducer
-         { key
-         , onEvent: \ev →
-             onEvent (conversion ev)
-         }
+  = makeProducer' key \ev →
+      onEvent (conversion ev)
+
+-- | Get the value of the target DOM element.
+targetValue
+  ∷ ∀ event
+  . (String → Maybe event)
+  → DOM.Event
+  → Maybe event
+targetValue handler ev
+  = either (\_ → Nothing) handler
+      ( runExcept do
+          let ev' = F.toForeign ev
+
+          target' ← F.readProp "target" ev'
+          value'  ← F.readProp "value" target'
+
+          F.readString value'
       )
 
 onAbort ∷ Producer DOM.Event
@@ -69,8 +95,11 @@ onAbort = makeProducer Types.OnAbort id
 onBlur ∷ Producer DOM.FocusEvent
 onBlur = makeProducer Types.OnBlur eventToFocusEvent
 
-onChange ∷ Producer DOM.Event
-onChange = makeProducer Types.OnChange id
+onChange ∷ Producer String
+onChange handler = makeProducer' Types.OnChange (targetValue handler)
+
+onChange' ∷ Producer DOM.Event
+onChange' = makeProducer Types.OnChange id
 
 onClick ∷ Producer DOM.MouseEvent
 onClick = makeProducer Types.OnClick eventToMouseEvent
@@ -117,25 +146,8 @@ onFocusIn = makeProducer Types.OnFocusIn eventToFocusEvent
 onFocusOut ∷ Producer DOM.FocusEvent
 onFocusOut = makeProducer Types.OnFocusOut eventToFocusEvent
 
-onInput
-  ∷ ∀ update state event
-  . (String → Maybe event)
-  → Types.Property update state event
-onInput handler
-  = Types.PProducer
-      ( Types.PropertyProducer
-          { key: Types.OnInput
-          , onEvent: \ev → either (\_ → Nothing) handler
-              ( runExcept do
-                  let ev' = F.toForeign ev
-
-                  target' ← F.readProp "target" ev'
-                  value'  ← F.readProp "value" target'
-
-                  F.readString value'
-              )
-          }
-      )
+onInput ∷ Producer String
+onInput handler = makeProducer' Types.OnInput (targetValue handler)
 
 onInput' ∷ Producer DOM.Event
 onInput' = makeProducer Types.OnInput id
@@ -143,14 +155,23 @@ onInput' = makeProducer Types.OnInput id
 onInvalid ∷ Producer DOM.Event
 onInvalid = makeProducer Types.OnInvalid id
 
-onKeyDown ∷ Producer DOM.KeyboardEvent
-onKeyDown = makeProducer Types.OnKeyDown eventToKeyboardEvent
+onKeyDown ∷ Producer String
+onKeyDown handler = makeProducer' Types.OnKeyDown (targetValue handler)
 
-onKeyPress ∷ Producer DOM.KeyboardEvent
-onKeyPress = makeProducer Types.OnKeyPress eventToKeyboardEvent
+onKeyDown' ∷ Producer DOM.KeyboardEvent
+onKeyDown' = makeProducer Types.OnKeyDown eventToKeyboardEvent
 
-onKeyUp ∷ Producer DOM.KeyboardEvent
-onKeyUp = makeProducer Types.OnKeyUp eventToKeyboardEvent
+onKeyPress ∷ Producer String
+onKeyPress handler = makeProducer' Types.OnKeyPress (targetValue handler)
+
+onKeyPress' ∷ Producer DOM.KeyboardEvent
+onKeyPress' = makeProducer Types.OnKeyPress eventToKeyboardEvent
+
+onKeyUp ∷ Producer String
+onKeyUp handler = makeProducer' Types.OnKeyUp (targetValue handler)
+
+onKeyUp' ∷ Producer DOM.KeyboardEvent
+onKeyUp' = makeProducer Types.OnKeyUp eventToKeyboardEvent
 
 onLoad ∷ Producer DOM.Event
 onLoad = makeProducer Types.OnLoad id
@@ -182,8 +203,11 @@ onReset = makeProducer Types.OnReset id
 onScroll ∷ Producer DOM.Event
 onScroll = makeProducer Types.OnScroll id
 
-onSelect ∷ Producer DOM.Event
-onSelect = makeProducer Types.OnSelect id
+onSelect ∷ Producer String
+onSelect handler = makeProducer' Types.OnSelect (targetValue handler)
+
+onSelect' ∷ Producer DOM.Event
+onSelect' = makeProducer Types.OnSelect id
 
 onSubmit ∷ Producer DOM.Event
 onSubmit = makeProducer Types.OnSubmit id
@@ -191,7 +215,7 @@ onSubmit = makeProducer Types.OnSubmit id
 onTransitionEnd ∷ Producer DOM.Event
 onTransitionEnd = makeProducer Types.OnTransitionEnd id
 
--- Static properties
+-- | Static properties.
 
 type StaticProperty
   = ∀ update state event
@@ -200,10 +224,11 @@ type StaticProperty
 make ∷ String → String → StaticProperty
 make key value'
   = Types.PStatic
-      $ Types.PropertyStatic
+      ( Types.PropertyStatic
           { key
           , value: value'
           }
+      )
 
 accept ∷ String → StaticProperty
 accept = make "accept"

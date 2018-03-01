@@ -24,6 +24,10 @@ data Counter2Events
   = Increment
   | Decrement
 
+data Counter2Updates
+  = Rising
+  | Falling
+
 counter2 ∷ ∀ eff. Eff (P.FX eff) Unit
 counter2
   = void $ P.runApplication
@@ -39,11 +43,16 @@ counter2
               Just (PH.text (show state))
 
           , PH.watchAny \{ update, state } →
-              map PH.text if state > 0 && update
-                then Just ":)"
-                else if state < 0
-                  then Nothing
-                  else Just ":("
+              map PH.text
+                case state > 0, update of
+                  true, Rising →
+                    Just ":)"
+
+                  true, Falling →
+                    Just ":("
+
+                  false, _ →
+                    Nothing
 
           , PH.button
               [ PP.onClick \_ → Just Increment
@@ -55,7 +64,7 @@ counter2
 
       , subscription: empty
       , initial:
-          { update: true
+          { update: Rising
           , state: 0
           }
 
@@ -63,12 +72,12 @@ counter2
           dispatch \state → case event of
             Increment →
               { state: state + 1
-              , update: true
+              , update: Rising
               }
 
             Decrement →
               { state: state - 1
-              , update: false
+              , update: Falling
               }
       }
 

@@ -26,7 +26,8 @@ watch
         )
     )
   → Types.Component eff update state event
-watch listener = Types.CWatcher (Types.ComponentWatcher listener)
+watch listener
+  = Types.CWatcher (Types.ComponentWatcher listener)
 
 -- | Update whenever any event is encountered. In most situations, this isn't
 -- going to be what you want to do, as it's computationally expensive to
@@ -38,7 +39,8 @@ watchAny
   . Renderer eff update state event
   → Types.Component eff update state event
 watchAny renderer
-  = watch \update → Types.Rerender (renderer update)
+  = watch \update →
+      Types.Rerender (renderer update)
 
 -- | Watch for a particular update.
 watchFor
