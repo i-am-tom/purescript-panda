@@ -10,7 +10,7 @@ import Prelude
 -- by the user.
 type Renderer eff update state event
   = { state ∷ state, update ∷ update }
-  → Maybe (Types.Component eff update state event)
+  → Types.Modification (Types.Component eff update state event)
 
 -- | Build a general-purpose watcher. This could be seen as the "advanced"
 -- watcher, because all the other functions are much easier to use.
@@ -19,7 +19,11 @@ watch
   . ( { state  ∷ state
       , update ∷ update
       }
-    → Maybe (Maybe (Types.Component eff update state event))
+    → Types.ShouldUpdate
+        ( Types.Modification
+            ( Types.Component eff update state event
+            )
+        )
     )
   → Types.Component eff update state event
 watch listener = Types.CWatcher (Types.ComponentWatcher listener)
@@ -34,7 +38,7 @@ watchAny
   . Renderer eff update state event
   → Types.Component eff update state event
 watchAny renderer
-  = watch \update → Just (renderer update)
+  = watch \update → Types.Rerender (renderer update)
 
 -- | Watch for a particular update.
 watchFor
@@ -46,8 +50,8 @@ watchFor
 watchFor search renderer
   = watch \change →
       if change.update == search
-        then Just (renderer change)
-        else Nothing
+        then Types.Rerender (renderer change)
+        else Types.Ignore
 
 -- | Watch for a set of actions. This could be seen as a "router" of sorts,
 -- save for the fact that there can be no fallback (as it would be triggered on
@@ -61,8 +65,12 @@ watchSet
   → Types.Component eff update state event
 watchSet routes
   = watch \change →
-      let route = find (\{ match } → match change.update) routes
-      in map (\{ renderer } → renderer change) route
+      case find (\{ match } → match change.update) routes of
+        Just { renderer } →
+          Types.Rerender (renderer change)
+
+        Nothing →
+          Types.Ignore
 
 -- | Update something based on whether a particular predicate is satisfied.
 watchWhen
@@ -73,5 +81,5 @@ watchWhen
 watchWhen predicate renderer
   = watch \change →
       if predicate change
-        then Just (renderer change)
-        else Nothing
+        then Types.Rerender (renderer change)
+        else Types.Ignore

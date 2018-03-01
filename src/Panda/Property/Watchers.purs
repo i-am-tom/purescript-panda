@@ -1,14 +1,14 @@
 module Panda.Property.Watchers where
 
 import Data.Foldable        (find)
-import Data.Maybe           (Maybe(..))
+import Data.Maybe           (Maybe(..), maybe)
 import Panda.Internal.Types as Types
 
 import Prelude
 
 type Renderer update state event
   = { state ∷ state, update ∷ update }
-  → Maybe String
+  → Types.Modification String
 
 -- | General constructor for property watches. Kind of the "advanced mode" -
 -- use the other functions if possible.
@@ -18,7 +18,7 @@ watch
   → ( { state  ∷ state
       , update ∷ update
       }
-    → Maybe (Maybe String)
+    → Types.ShouldUpdate (Types.Modification String)
     )
   → Types.Property update state event
 watch key listener = Types.PWatcher (Types.PropertyWatcher { key, listener })
@@ -32,7 +32,7 @@ watchAny
   → Renderer update state event
   → Types.Property update state event
 watchAny key renderer
-  = watch key \update → Just (renderer update)
+  = watch key \update → Types.Rerender (renderer update)
 
 -- | Watch for a particular update.
 watchFor
@@ -45,8 +45,8 @@ watchFor
 watchFor key search renderer
   = watch key \change →
       if change.update == search
-        then Just (renderer change)
-        else Nothing
+        then Types.Rerender (renderer change)
+        else Types.Ignore
 
 -- | Given a set of predicate/render pairs, update the property accordingly
 -- whenever one of the predicates is matched. Note that this is like a `case`:
@@ -69,10 +69,14 @@ watchSet key routes
 
           render
             ∷ ∀ r. { renderer ∷ Renderer update state event | r }
-            → Maybe String
+            → Types.Modification String
           render { renderer } = renderer change
       in
-        map render (get routes)
+        case get routes of
+          Just routes' →
+            Types.Rerender (render routes')
+          Nothing →
+            Types.Ignore
 
 -- | Update a property whenever a predicate is satisfied.
 watchWhen
@@ -84,5 +88,5 @@ watchWhen
 watchWhen key predicate renderer
   = watch key \change →
       if predicate change
-        then Just (renderer change)
-        else Nothing
+        then Types.Rerender (renderer change)
+        else Types.Ignore

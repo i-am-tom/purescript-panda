@@ -13,6 +13,16 @@ import Util.Exists       (Exists3)
 
 import Prelude
 
+-- | Should we update at all? Or is the DOM fine as it is?
+data ShouldUpdate a
+  = Rerender a
+  | Ignore
+
+-- | We're either updating to the new content, or removing the content.
+data Modification a
+  = Update a
+  | Remove
+
 -- | All the effects that occur as a result of Panda! We'll just use this for
 -- the global signature until the effect row goes...
 type FX eff
@@ -87,7 +97,7 @@ newtype PropertyWatcher update state event
       { key ∷ String
       , listener
           ∷ { update ∷ update, state  ∷ state }
-          → Maybe (Maybe String)
+          → ShouldUpdate (Modification String)
       }
 
 -- | A producer is a property that... well, produces events! These properties
@@ -132,7 +142,7 @@ newtype ComponentWatcher eff update state event
       ( { update ∷ update
         , state  ∷ state
         }
-      → Maybe (Maybe (Component eff update state event))
+      → ShouldUpdate (Modification (Component eff update state event))
       )
 
 -- | Applications can be nested arbitrarily, with the proviso that there is

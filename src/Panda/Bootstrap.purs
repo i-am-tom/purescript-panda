@@ -6,8 +6,7 @@ import Control.Plus             (empty)
 import DOM.Node.Document        (createElement, createTextNode) as DOM
 import DOM.Node.Node            (appendChild, firstChild, removeChild) as DOM
 import DOM.Node.Types           (Document, Node, elementToNode, textToNode) as DOM
-import Data.Foldable            (fold, for_, sequence_)
-import Data.Lazy                (force)
+import Data.Foldable            (fold, sequence_)
 import Data.Maybe               (Maybe(..))
 import Data.Monoid              (mempty)
 import Data.Traversable         (for, traverse)
@@ -168,26 +167,33 @@ render document
           updater update = do
             let possibleUpdate = listener update
 
-            for_ possibleUpdate \rerender → do
-              firstChild ← DOM.firstChild parent
+            case possibleUpdate of
+              Types.Rerender rerender → do
+                firstChild ← DOM.firstChild parent
 
-              case firstChild of
-                Just elem → do
-                  _ ← DOM.removeChild elem parent
-                  pure unit
+                case firstChild of
+                  Just elem → do
+                    _ ← DOM.removeChild elem parent
+                    pure unit
 
-                Nothing →
-                  pure unit
+                  Nothing →
+                    pure unit
 
-              for rerender \spec → do
-                { cancel, element, events, handleUpdate }
-                    ← render document spec
+                case rerender of
+                  Types.Update spec → do
+                    { cancel, element, events, handleUpdate }
+                        ← render document spec
 
+                    _ ← DOM.appendChild element parent
 
-                _ ← DOM.appendChild element parent
+                    cancelEvents ← FRP.subscribe events toOutput
+                    registerCanceller (cancel *> cancelEvents)
 
-                cancelEvents ← FRP.subscribe events toOutput
-                registerCanceller (cancel *> cancelEvents)
+                  Types.Remove →
+                    pure unit
+
+              Types.Ignore →
+                pure unit
 
         pure
           { cancel: registerCanceller (pure unit) *> cancelWatcher

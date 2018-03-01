@@ -164,13 +164,16 @@ render element
               , handleUpdate: \update → do
                   let renderer = listener update
 
-                  for_ renderer \update →
-                    case update of
-                      Just value →
-                        DOM.setAttribute key value element
+                  case renderer of
+                    Types.Rerender update →
+                      case update of
+                        Types.Update value →
+                          DOM.setAttribute key value element
 
-                      Nothing →
-                        DOM.removeAttribute key element
+                        Types.Remove →
+                          DOM.removeAttribute key element
+                    Types.Ignore →
+                      pure unit
               }
           )
 
