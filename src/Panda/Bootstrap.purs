@@ -19,7 +19,7 @@ import Util.Exists              (runExists3)
 import Prelude
 
 -- | Set up and kick off a Panda application. This creates the element tree,
--- and ties the update handler to the event stream.
+-- | and ties the update handler to the event stream.
 bootstrap
   ∷ ∀ eff update state event
   . DOM.Document
@@ -77,9 +77,9 @@ bootstrap document { initial, subscription, update, view } = do
   pure (renderedPage { cancel = cancel })
 
 -- | Render the "view" of an application. This is the function that actually
--- produces the DOM elements, and any rendering of a delegate will call
--- `bootstrap`. This is also where the event handlers and cancellers are
--- computed.
+-- | produces the DOM elements, and any rendering of a delegate will call
+-- | `bootstrap`. This is also where the event handlers and cancellers are
+-- | computed.
 render
   ∷ ∀ eff update state event
   . DOM.Document

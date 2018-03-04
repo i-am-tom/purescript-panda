@@ -11,7 +11,7 @@ type Renderer update state event
   → Types.Modification String
 
 -- | General constructor for property watches. Kind of the "advanced mode" -
--- use the other functions if possible.
+-- | use the other functions if possible.
 watch
   ∷ ∀ update state event
   . String
@@ -24,8 +24,8 @@ watch
 watch key listener = Types.PWatcher (Types.PropertyWatcher { key, listener })
 
 -- | Run a property update regardless of the update that is detected. For
--- larger applications, this will happen very regularly, so be careful with
--- this...
+-- | larger applications, this will happen very regularly, so be careful with
+-- | this...
 watchAny
   ∷ ∀ update state event
   . String

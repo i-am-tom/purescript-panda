@@ -16,7 +16,7 @@ import Unsafe.Coerce           (unsafeCoerce)
 
 import Prelude
 
--- Event conversions
+-- | Event conversions
 
 eventToDragEvent ∷ DOM.Event → DOM.DragEvent
 eventToDragEvent = unsafeCoerce
@@ -42,7 +42,7 @@ eventToTouchEvent = unsafeCoerce
 eventToWheelEvent ∷ DOM.Event → DOM.WheelEvent
 eventToWheelEvent = unsafeCoerce
 
--- Event producers
+-- | Event producers
 type Producer input
   = ∀ update state event
   . (input → Maybe event)
@@ -215,8 +215,8 @@ onSubmit = makeProducer Types.OnSubmit id
 onTransitionEnd ∷ Producer DOM.Event
 onTransitionEnd = makeProducer Types.OnTransitionEnd id
 
--- | Static properties.
-
+-- | Static properties are those whose `update state event` triple can be
+-- | anything.
 type StaticProperty
   = ∀ update state event
   . Types.Property update state event

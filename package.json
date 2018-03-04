@@ -1,6 +1,6 @@
 {
   "name": "purescript-panda",
-  "version": "0.10.1",
+  "version": "0.10.2",
   "description": "Black-and-white rendering.",
   "dependencies": {
     "pscid": "^2.0.2",

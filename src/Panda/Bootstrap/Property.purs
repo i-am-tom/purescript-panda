@@ -20,8 +20,8 @@ import Panda.Internal.Types      as Types
 import Prelude
 
 -- | Given a Producer, return the string that identifies it when adding an
--- event handler. This is also the string we use for the attribute when we
--- attach it to the DOM.
+-- | event handler. This is also the string we use for the attribute when we
+-- | attach it to the DOM.
 producerToString ∷ Types.Producer → String
 producerToString
   = case _ of
@@ -105,8 +105,8 @@ producerToEventType
       Types.OnTransitionEnd → DOM.Events.transitionend
 
 -- | Add an event listener to a DOM element. The return result is an `Event`
--- that can be watched for events firing from this node, as well as the `key`
--- string that was used to register the event.
+-- | that can be watched for events firing from this node, as well as the `key`
+-- | string that was used to register the event.
 attach
   ∷ ∀ eff event
   . { key     ∷ Types.Producer
@@ -130,7 +130,7 @@ attach { key, onEvent } element = do
   pure { listener, events }
 
 -- | Render a Property on a DOM element. This also initialises any `Watcher`
--- components, and sets up their event handlers and cancellers.
+-- | components, and sets up their event handlers and cancellers.
 render
   ∷ ∀ eff update state event
   . DOM.Element
