@@ -9,7 +9,6 @@ import Data.Maybe           (Maybe)
 import Panda.HTML.Elements  as Elements
 import Panda.HTML.Watchers  as Watchers
 import Panda.Internal.Types as Types
-import Util.Exists          (mkExists3)
 
 -- | Create a delegate application. Applications can be nested inside other,
 -- | larger applications providing that a translation from the update / state /
@@ -26,7 +25,7 @@ delegate
   → Types.Component eff update state event
 delegate focus application
   = Types.CDelegate
-      ( mkExists3
+      ( Types.mkComponentDelegateX
           ( Types.ComponentDelegate
               { delegate: application
               , focus

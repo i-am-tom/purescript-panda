@@ -1,15 +1,16 @@
 module Panda.Internal.Types where
 
-import Control.Alt       ((<|>))
-import Control.Monad.Eff (Eff)
-import Control.Plus      (empty)
-import DOM               (DOM)
-import DOM.Event.Types   (Event) as DOM
-import Data.Maybe        (Maybe)
-import Data.Monoid       (class Monoid, mempty)
-import FRP               (FRP)
-import FRP.Event         (Event) as FRP
-import Util.Exists       (Exists3)
+import Control.Alt           ((<|>))
+import Control.Monad.Eff     (Eff, kind Effect)
+import Control.Monad.Eff.Ref (REF)
+import Control.Plus          (empty)
+import DOM                   (DOM)
+import DOM.Event.Types       (Event) as DOM
+import Data.Maybe            (Maybe)
+import Data.Monoid           (class Monoid, mempty)
+import FRP                   (FRP)
+import FRP.Event             (Event) as FRP
+import Unsafe.Coerce         (unsafeCoerce)
 
 import Prelude
 
@@ -28,6 +29,7 @@ data Modification a
 type FX eff
   = ( dom ∷ DOM
     , frp ∷ FRP
+    , ref ∷ REF
     | eff
     )
 
@@ -77,7 +79,6 @@ data Producer
   | OnSubmit
   | OnTransitionEnd
 
-
 -- | A static property is just key => value, and can't do anything clever. This
 -- | should be used whenever you want to use a property that won't be affectted
 -- | by state changes or events.
@@ -117,7 +118,6 @@ data Property update state event
   = PStatic    PropertyStatic
   | PWatcher  (PropertyWatcher  update state event)
   | PProducer (PropertyProducer              event)
-
 
 -- | A static component is one that has properties and potentially houses other
 -- | components. These are the things you _actually_ render to the DOM, and
@@ -160,14 +160,37 @@ newtype ComponentDelegate eff update state event subupdate substate subevent
             }
       }
 
+-- | A component delegate with the "subtypes" existentialised. This means we
+-- | don't have to worry about carrying it up the tree.
+foreign import data ComponentDelegateX
+  ∷ # Effect → Type → Type → Type → Type
+
+-- | Existentialise the "subtypes" in a component delegate.
+mkComponentDelegateX
+  ∷ ∀ eff update state event subupdate substate subevent
+  . ComponentDelegate eff update state event subupdate substate subevent
+  → ComponentDelegateX eff update state event
+mkComponentDelegateX
+  = unsafeCoerce
+
+-- | Un-existentialise a delegate, and deal with the "subtypes".
+runComponentDelegateX
+  ∷ ∀ eff update state event result
+  . ( ∀ subupdate substate subevent
+      . ComponentDelegate eff update state event subupdate substate subevent
+      → result
+    )
+  → ComponentDelegateX eff update state event
+  → result
+runComponentDelegateX
+  = unsafeCoerce
 
 -- | A component is either a "static" element, a watcher, a delegate, or text.
 data Component eff update state event
-  = CStatic            (ComponentStatic   eff update state event)
-  | CWatcher           (ComponentWatcher  eff update state event)
-  | CDelegate (Exists3 (ComponentDelegate eff update state event))
+  = CStatic   (ComponentStatic    eff update state event)
+  | CWatcher  (ComponentWatcher   eff update state event)
+  | CDelegate (ComponentDelegateX eff update state event)
   | CText String
-
 
 -- | When `Component` or `Property` structures are rendered, an element is
 -- | created, along with a system for handling events. This structure houses

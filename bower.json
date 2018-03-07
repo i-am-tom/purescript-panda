@@ -17,7 +17,8 @@
     "purescript-prelude": "^3.1.1",
     "purescript-console": "^3.0.0",
     "purescript-eff": "^3.1.0",
-    "purescript-debug": "^3.0.0"
+    "purescript-debug": "^3.0.0",
+    "purescript-refs": "^3.0.0"
   },
   "repository": {
     "type": "git",

@@ -2,6 +2,7 @@ module Panda.Bootstrap where
 
 import Control.Alt              ((<|>))
 import Control.Monad.Eff        (Eff)
+import Control.Monad.Eff.Ref    (Ref, newRef, readRef, writeRef) as Ref
 import Control.Plus             (empty)
 import DOM.Node.Document        (createElement, createTextNode) as DOM
 import DOM.Node.Node            (appendChild, removeChild) as DOM
@@ -9,12 +10,11 @@ import DOM.Node.Types           (Document, Node, elementToNode, textToNode) as D
 import Data.Foldable            (fold, sequence_)
 import Data.Maybe               (Maybe(..))
 import Data.Monoid              (mempty)
-import Data.Traversable         (for, traverse)
+import Data.Traversable         (traverse)
 import FRP.Event                (Event, create, subscribe) as FRP
 import FRP.Event.Class          (fold, withLast, sampleOn) as FRP
 import Panda.Bootstrap.Property as Property
 import Panda.Internal.Types     as Types
-import Util.Exists              (runExists3)
 
 import Prelude
 
@@ -25,19 +25,11 @@ bootstrap
   . DOM.Document
   → DOM.Node
   → Types.Application (Types.FX eff) update state event
-  → Eff (Types.FX eff)
-      { cancel ∷ Types.Canceller (Types.FX eff)
-      , events ∷ FRP.Event event
-      , handleUpdate
-          ∷ { update ∷ update
-            , state ∷ state
-            }
-          → Types.Canceller (Types.FX eff)
-      }
+  → Eff (Types.FX eff) (Types.EventSystem (Types.FX eff) update state event)
 
 bootstrap document parent { initial, subscription, update, view } = do
-  renderedPage ← render document parent view
-  deltas       ← FRP.create
+  (Types.EventSystem renderedPage) ← render document parent view
+  deltas                           ← FRP.create
 
   let
     -- | Iterations of state as updates are applied. The most recent value is
@@ -74,7 +66,7 @@ bootstrap document parent { initial, subscription, update, view } = do
                  *> cancelRenderer    -- Cancel the render loop
                  *> cancelApplication -- Cancel the dispatch loop
 
-  pure (renderedPage { cancel = cancel })
+  pure (Types.EventSystem (renderedPage { cancel = cancel }))
 
 -- | Render the "view" of an application. This is the function that actually
 -- | produces the DOM elements, and any rendering of a delegate will call
@@ -85,86 +77,76 @@ render
   . DOM.Document
   → DOM.Node
   → Types.Component (Types.FX eff) update state event
-  → Eff (Types.FX eff)
-      { cancel ∷ Types.Canceller (Types.FX eff)
-      , events ∷ FRP.Event event
-      , handleUpdate
-          ∷ { update ∷ update
-            , state ∷ state
-            }
-          → Eff (Types.FX eff) Unit
-      }
-
+  → Eff (Types.FX eff) (Types.EventSystem (Types.FX eff) update state event)
 render document parent
   = case _ of
       Types.CText text → do
-        element ← map DOM.textToNode (DOM.createTextNode text document)
-        _ <- DOM.appendChild element parent
+        element ← DOM.createTextNode text document
+        let elementNode = DOM.textToNode element
+
+        _ ← DOM.appendChild elementNode parent
 
         pure
-          { cancel: do
-              _ ← DOM.removeChild element parent
-              pure unit
-          , events: empty
-          , handleUpdate: mempty
-          }
+          ( Types.EventSystem
+              { cancel: do
+                  _ ← DOM.removeChild elementNode parent
+                  pure unit
+              , events: empty
+              , handleUpdate: mempty
+              }
+          )
 
       Types.CStatic (Types.ComponentStatic { children, properties, tagName }) → do
-        static ← DOM.createElement tagName document
+        static        ← DOM.createElement tagName document
         renderedProps ← traverse (Property.render static) properties
 
         let staticNode = DOM.elementToNode static
+        prepared ← traverse (render document staticNode) children
 
-        prepared ← for children \child → do
-          { cancel, events, handleUpdate }
-              ← render document staticNode child
-
-          pure (Types.EventSystem { cancel, events, handleUpdate })
-
-        let (Types.EventSystem aggregated)
-              = fold (prepared <> renderedProps)
-
+        let (Types.EventSystem aggregated) = fold (prepared <> renderedProps)
         _ ← DOM.appendChild staticNode parent
 
         pure
-          { cancel: do
-              _ ← DOM.removeChild staticNode parent
-              aggregated.cancel
+          ( Types.EventSystem
+              { cancel: do
+                  _ ← DOM.removeChild staticNode parent
+                  aggregated.cancel
 
-          , events: aggregated.events
-          , handleUpdate: aggregated.handleUpdate
-          }
+              , events: aggregated.events
+              , handleUpdate: aggregated.handleUpdate
+              }
+          )
 
       Types.CDelegate delegateE →
         let
           process
-            = runExists3 \(Types.ComponentDelegate { delegate, focus }) → do
-                { cancel, events, handleUpdate }
-                    ← bootstrap document parent delegate
+            = Types.runComponentDelegateX
+                \(Types.ComponentDelegate { delegate, focus }) → do
+                  (Types.EventSystem { cancel, events, handleUpdate })
+                      ← bootstrap document parent delegate
 
-                pure
-                  { cancel
-                  , events: map focus.event events
-                  , handleUpdate: \{ state, update } →
-                      case focus.update update of
-                        Just subupdate →
-                          handleUpdate
-                            { update: subupdate
-                            , state:  focus.state state
-                            }
+                  pure
+                    ( Types.EventSystem
+                        { cancel
+                        , events: map focus.event events
+                        , handleUpdate: \{ state, update } →
+                            case focus.update update of
+                              Just subupdate →
+                                handleUpdate
+                                  { update: subupdate
+                                  , state:  focus.state state
+                                  }
 
-                        Nothing →
-                          pure unit
-                  }
+                              Nothing →
+                                pure unit
+                        }
+                    )
 
         in process delegateE
 
       Types.CWatcher (Types.ComponentWatcher listener) → do
-        { event: output,     push: toOutput }          ← FRP.create
-        { event: cancellers, push: registerCanceller } ← FRP.create
-
-        cancelWatcher ← FRP.subscribe (FRP.withLast cancellers) \{ last } →
-          sequence_ last
+        { event: output,     push: toOutput } ← FRP.create
+        lastWatcher'sCanceller                ← Ref.newRef (pure unit)
 
         let
           updater update = do
@@ -174,11 +156,14 @@ render document parent
               Types.Rerender rerender → do
                 case rerender of
                   Types.Update spec → do
-                    { cancel, events, handleUpdate }
+                    (Types.EventSystem { cancel, events, handleUpdate })
                         ← render document parent spec
 
-                    cancelEvents ← FRP.subscribe events toOutput
-                    registerCanceller (cancel *> cancelEvents)
+                    cancelEvents  ← FRP.subscribe events toOutput
+                    lastCanceller ← Ref.readRef lastWatcher'sCanceller
+
+                    lastCanceller -- Run the cancel event!
+                    Ref.writeRef lastWatcher'sCanceller (cancel *> cancelEvents)
 
                   Types.Remove →
                     pure unit
@@ -187,10 +172,11 @@ render document parent
                 pure unit
 
         pure
-          { cancel: do
-              registerCanceller (pure unit)
-              cancelWatcher
-          , events: output
-          , handleUpdate: updater
-          }
-
+          ( Types.EventSystem
+              { cancel: do
+                  lastCanceller ← Ref.readRef lastWatcher'sCanceller
+                  lastCanceller -- Run the last watcher.
+              , events: output
+              , handleUpdate: updater
+              }
+          )

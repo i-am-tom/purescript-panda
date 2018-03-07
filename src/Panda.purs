@@ -8,7 +8,6 @@ import DOM.HTML                  (window) as DOM
 import DOM.HTML.Document         (body) as DOM
 import DOM.HTML.Types            (htmlDocumentToDocument, htmlElementToNode) as DOM
 import DOM.HTML.Window           (document) as DOM
-import DOM.Node.Node             (appendChild) as DOM
 import DOM.Node.Types            (Node) as DOM
 import Data.Maybe                (Maybe)
 import Data.Traversable          (for)
@@ -54,9 +53,5 @@ runApplicationIn configuration node = do
   window   ← DOM.window
   document ← DOM.document window
 
-  { cancel, events, element, handleUpdate }
-      ← bootstrap (DOM.htmlDocumentToDocument document) configuration
-
-  _ ← DOM.appendChild element node
-  pure (Types.EventSystem { cancel, events, handleUpdate })
+  bootstrap (DOM.htmlDocumentToDocument document) node configuration
 
