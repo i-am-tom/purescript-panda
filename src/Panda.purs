@@ -13,7 +13,7 @@ import DOM.Node.Types            (Node) as DOM
 import Data.Maybe                (Maybe)
 import Data.Traversable          (for)
 import Panda.Bootstrap           (bootstrap)
-import Panda.Internal.Types      (Application, Component, FX, Property) as ExportedTypes
+import Panda.Internal.Types      (Application, Component, FX, Property, Modification(..), ShouldUpdate(..)) as ExportedTypes
 import Panda.Internal.Types      as Types
 
 import Prelude

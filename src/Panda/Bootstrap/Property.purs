@@ -10,8 +10,7 @@ import DOM.HTML.Event.EventTypes as DOM.Events
 import DOM.Node.Element          (removeAttribute, setAttribute) as DOM
 import DOM.Node.Types            (Element, elementToEventTarget) as DOM
 import Data.Filterable           (filtered)
-import Data.Foldable             (for_, sequence_)
-import Data.Maybe                (Maybe(..))
+import Data.Foldable             (sequence_)
 import Data.Monoid               (mempty)
 import FRP.Event                 (Event, create, subscribe) as FRP
 import FRP.Event.Class           (withLast) as FRP
@@ -165,8 +164,8 @@ render element
                   let renderer = listener update
 
                   case renderer of
-                    Types.Rerender update →
-                      case update of
+                    Types.Rerender update' →
+                      case update' of
                         Types.Update value →
                           DOM.setAttribute key value element
 

@@ -4,7 +4,7 @@ import Control.Alt              ((<|>))
 import Control.Monad.Eff        (Eff)
 import Control.Plus             (empty)
 import DOM.Node.Document        (createElement, createTextNode) as DOM
-import DOM.Node.Node            (appendChild, firstChild, removeChild) as DOM
+import DOM.Node.Node            (appendChild, removeChild) as DOM
 import DOM.Node.Types           (Document, Node, elementToNode, textToNode) as DOM
 import Data.Foldable            (fold, sequence_)
 import Data.Maybe               (Maybe(..))
@@ -23,11 +23,11 @@ import Prelude
 bootstrap
   ∷ ∀ eff update state event
   . DOM.Document
+  → DOM.Node
   → Types.Application (Types.FX eff) update state event
   → Eff (Types.FX eff)
       { cancel ∷ Types.Canceller (Types.FX eff)
       , events ∷ FRP.Event event
-      , element ∷ DOM.Node
       , handleUpdate
           ∷ { update ∷ update
             , state ∷ state
@@ -35,8 +35,8 @@ bootstrap
           → Types.Canceller (Types.FX eff)
       }
 
-bootstrap document { initial, subscription, update, view } = do
-  renderedPage ← render document view
+bootstrap document parent { initial, subscription, update, view } = do
+  renderedPage ← render document parent view
   deltas       ← FRP.create
 
   let
@@ -83,11 +83,11 @@ bootstrap document { initial, subscription, update, view } = do
 render
   ∷ ∀ eff update state event
   . DOM.Document
+  → DOM.Node
   → Types.Component (Types.FX eff) update state event
   → Eff (Types.FX eff)
       { cancel ∷ Types.Canceller (Types.FX eff)
       , events ∷ FRP.Event event
-      , element ∷ DOM.Node
       , handleUpdate
           ∷ { update ∷ update
             , state ∷ state
@@ -95,35 +95,42 @@ render
           → Eff (Types.FX eff) Unit
       }
 
-render document
+render document parent
   = case _ of
       Types.CText text → do
-        element ← DOM.createTextNode text document
+        element ← map DOM.textToNode (DOM.createTextNode text document)
+        _ <- DOM.appendChild element parent
 
         pure
-          { cancel: mempty
-          , element: DOM.textToNode element
+          { cancel: do
+              _ ← DOM.removeChild element parent
+              pure unit
           , events: empty
           , handleUpdate: mempty
           }
 
       Types.CStatic (Types.ComponentStatic { children, properties, tagName }) → do
-        parent ← DOM.createElement tagName document
-        renderedProps ← traverse (Property.render parent) properties
+        static ← DOM.createElement tagName document
+        renderedProps ← traverse (Property.render static) properties
+
+        let staticNode = DOM.elementToNode static
 
         prepared ← for children \child → do
-          { cancel, events, element, handleUpdate }
-              ← render document child
+          { cancel, events, handleUpdate }
+              ← render document staticNode child
 
-          _ ← DOM.appendChild element (DOM.elementToNode parent)
           pure (Types.EventSystem { cancel, events, handleUpdate })
 
         let (Types.EventSystem aggregated)
               = fold (prepared <> renderedProps)
 
+        _ ← DOM.appendChild staticNode parent
+
         pure
-          { cancel: aggregated.cancel
-          , element: DOM.elementToNode parent
+          { cancel: do
+              _ ← DOM.removeChild staticNode parent
+              aggregated.cancel
+
           , events: aggregated.events
           , handleUpdate: aggregated.handleUpdate
           }
@@ -132,13 +139,12 @@ render document
         let
           process
             = runExists3 \(Types.ComponentDelegate { delegate, focus }) → do
-                { cancel, events, element, handleUpdate }
-                    ← bootstrap document delegate
+                { cancel, events, handleUpdate }
+                    ← bootstrap document parent delegate
 
                 pure
                   { cancel
                   , events: map focus.event events
-                  , element
                   , handleUpdate: \{ state, update } →
                       case focus.update update of
                         Just subupdate →
@@ -154,9 +160,6 @@ render document
         in process delegateE
 
       Types.CWatcher (Types.ComponentWatcher listener) → do
-        -- TODO: don't create an element for a watcher.
-        parent ← map DOM.elementToNode (DOM.createElement "div" document)
-
         { event: output,     push: toOutput }          ← FRP.create
         { event: cancellers, push: registerCanceller } ← FRP.create
 
@@ -169,22 +172,10 @@ render document
 
             case possibleUpdate of
               Types.Rerender rerender → do
-                firstChild ← DOM.firstChild parent
-
-                case firstChild of
-                  Just elem → do
-                    _ ← DOM.removeChild elem parent
-                    pure unit
-
-                  Nothing →
-                    pure unit
-
                 case rerender of
                   Types.Update spec → do
-                    { cancel, element, events, handleUpdate }
-                        ← render document spec
-
-                    _ ← DOM.appendChild element parent
+                    { cancel, events, handleUpdate }
+                        ← render document parent spec
 
                     cancelEvents ← FRP.subscribe events toOutput
                     registerCanceller (cancel *> cancelEvents)
@@ -196,9 +187,10 @@ render document
                 pure unit
 
         pure
-          { cancel: registerCanceller (pure unit) *> cancelWatcher
+          { cancel: do
+              registerCanceller (pure unit)
+              cancelWatcher
           , events: output
-          , element: parent
           , handleUpdate: updater
           }
 
