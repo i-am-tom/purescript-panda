@@ -150,20 +150,12 @@ render element
           )
 
       Types.PWatcher (Types.PropertyWatcher { key, listener }) → do
-        { event: output,     push: toOutput }          ← FRP.create
-        { event: cancellers, push: registerCanceller } ← FRP.create
-
-        cancelIteration ← FRP.subscribe (FRP.withLast cancellers) \{ last } →
-          sequence_ last
-
         pure
           ( Types.EventSystem
-              { cancel: registerCanceller (pure unit) *> cancelIteration
-              , events: output
+              { cancel: mempty
+              , events: empty
               , handleUpdate: \update → do
-                  let renderer = listener update
-
-                  case renderer of
+                  case listener update of
                     Types.Rerender update' →
                       case update' of
                         Types.Update value →

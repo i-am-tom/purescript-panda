@@ -150,9 +150,7 @@ render document parent
 
         let
           updater update = do
-            let possibleUpdate = listener update
-
-            case possibleUpdate of
+            case listener update of
               Types.Rerender rerender → do
                 case rerender of
                   Types.Update spec → do
