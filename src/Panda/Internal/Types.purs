@@ -19,10 +19,23 @@ data ShouldUpdate a
   = Rerender a
   | Ignore
 
--- | We're either updating to the new content, or removing the content.
-data Modification a
-  = Update a
-  | Remove
+-- | Array updates as an algebra.
+data ArrayUpdate value
+  = ArrayInsertAt Int value
+  | ArrayDeleteAt Int
+
+-- | The only type we're interested in is `Component`!
+newtype ComponentUpdate eff update state event
+  = ComponentUpdate (ArrayUpdate (Component eff update state event))
+
+-- | Object updates as an algebra.
+data ObjectUpdate key value
+  = ObjectInsert key value
+  | ObjectDelete key
+
+-- | Property updates are object updates specialised to strings.
+newtype PropertyUpdate
+  = PropertyUpdate (ObjectUpdate String String)
 
 -- | All the effects that occur as a result of Panda! We'll just use this for
 -- | the global signature until the effect row goes...
@@ -32,10 +45,6 @@ type FX eff
     , ref ∷ REF
     | eff
     )
-
--- | A canceller cancels some event handler.
-type Canceller eff
-  = Eff eff Unit
 
 -- | Sum type of all sensible event handlers that can be applied to elements.
 -- | Full disclosure: I stole this list from Nate Faubion's wonderful
@@ -93,13 +102,11 @@ newtype PropertyStatic
 -- | `Watcher` can `Maybe` decide to update the value. This update is either
 -- | `Just` the string to which the property should be set, or that it should
 -- | be set to `Nothing` (hence the double-`Maybe`).
-newtype PropertyWatcher update state event
+newtype PropertyWatcher update state
   = PropertyWatcher
-      { key ∷ String
-      , listener
-          ∷ { update ∷ update, state  ∷ state }
-          → ShouldUpdate (Modification String)
-      }
+      ( { update ∷ update, state ∷ state }
+      → ShouldUpdate (Array PropertyUpdate)
+      )
 
 -- | A producer is a property that... well, produces events! These properties
 -- | are indexed by `Producer` values. Using the producer helpers will do you a
@@ -116,7 +123,7 @@ newtype PropertyProducer event
 -- | that depends on some events, or a property that produces events.
 data Property update state event
   = PStatic    PropertyStatic
-  | PWatcher  (PropertyWatcher  update state event)
+  | PWatcher  (PropertyWatcher  update state)
   | PProducer (PropertyProducer              event)
 
 -- | A static component is one that has properties and potentially houses other
@@ -142,7 +149,7 @@ newtype ComponentWatcher eff update state event
       ( { update ∷ update
         , state  ∷ state
         }
-      → ShouldUpdate (Modification (Component eff update state event))
+      → ShouldUpdate (Array (ComponentUpdate eff update state event))
       )
 
 -- | Applications can be nested arbitrarily, with the proviso that there is
@@ -197,13 +204,13 @@ data Component eff update state event
 -- | that system as a monoid, so that they can be combined more easily.
 newtype EventSystem eff update state event
   = EventSystem
-      { cancel       ∷ Canceller eff
+      { cancel       ∷ Eff eff Unit
       , events       ∷ FRP.Event event
       , handleUpdate
           ∷ { update ∷ update
             , state  ∷ state
             }
-          → Canceller eff
+          → Eff eff Unit
       }
 
 instance semigroupEventSystem

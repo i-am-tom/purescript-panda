@@ -2,17 +2,20 @@ module Panda.Bootstrap where
 
 import Control.Alt              ((<|>))
 import Control.Monad.Eff        (Eff)
-import Control.Monad.Eff.Ref    (Ref, newRef, readRef, writeRef) as Ref
+import Control.Monad.Eff.Ref    (modifyRef', newRef, readRef) as Ref
+import Control.Monad.Rec.Class  (Step(..), tailRecM)
 import Control.Plus             (empty)
-import DOM.Node.Document        (createElement, createTextNode) as DOM
-import DOM.Node.Node            (appendChild, removeChild) as DOM
-import DOM.Node.Types           (Document, Node, elementToNode, textToNode) as DOM
-import Data.Foldable            (fold, sequence_)
+import Data.Array               ((!!), deleteAt, insertAt, uncons)
+import DOM.Node.Document        (createDocumentFragment, createElement, createTextNode) as DOM
+import DOM.Node.Node            (appendChild, childNodes, insertBefore, removeChild) as DOM
+import DOM.Node.NodeList        (item) as DOM
+import DOM.Node.Types           (Document, Node, documentFragmentToNode, elementToNode, textToNode) as DOM
+import Data.Foldable            (fold, for_)
 import Data.Maybe               (Maybe(..))
 import Data.Monoid              (mempty)
 import Data.Traversable         (traverse)
 import FRP.Event                (Event, create, subscribe) as FRP
-import FRP.Event.Class          (fold, withLast, sampleOn) as FRP
+import FRP.Event.Class          (fold, sampleOn) as FRP
 import Panda.Bootstrap.Property as Property
 import Panda.Internal.Types     as Types
 
@@ -145,36 +148,95 @@ render document parent
         in process delegateE
 
       Types.CWatcher (Types.ComponentWatcher listener) → do
-        { event: output,     push: toOutput } ← FRP.create
-        lastWatcher'sCanceller                ← Ref.newRef (pure unit)
+        { event: output, push: toOutput } ← FRP.create
+        eventSystems                      ← Ref.newRef mempty
 
         let
-          updater update = do
-            case listener update of
-              Types.Rerender rerender → do
-                case rerender of
-                  Types.Update spec → do
-                    (Types.EventSystem { cancel, events, handleUpdate })
-                        ← render document parent spec
+          execute
+            ∷ Types.ComponentUpdate (Types.FX eff) update state event
+            → Eff (Types.FX eff) Unit
+          execute (Types.ComponentUpdate instruction)
+            = case instruction of
+                Types.ArrayDeleteAt index → do
+                  cleanup ← Ref.modifyRef' eventSystems \systems →
+                    case deleteAt index systems, systems !! index of
+                      Just updated, Just (Types.EventSystem { cancel }) →
+                        { state: updated, value: cancel }
 
-                    cancelEvents  ← FRP.subscribe events toOutput
-                    lastCanceller ← Ref.readRef lastWatcher'sCanceller
+                      _, _ →
+                        { state: systems, value: pure unit }
 
-                    lastCanceller -- Run the cancel event!
-                    Ref.writeRef lastWatcher'sCanceller (cancel *> cancelEvents)
+                  cleanup
 
-                  Types.Remove →
-                    pure unit
+                Types.ArrayInsertAt index spec → do
+                  fragment ← DOM.createDocumentFragment document
+                  let fragment' = DOM.documentFragmentToNode fragment
 
-              Types.Ignore →
-                pure unit
+                  Types.EventSystem system ← render document fragment' spec
+                  cancelEventListener      ← FRP.subscribe system.events toOutput
+
+                  let
+                    cancel' = do
+                      system.cancel
+                      cancelEventListener
+
+                    system' = Types.EventSystem (system { cancel = cancel' })
+
+                  children      ← DOM.childNodes fragment'
+                  maybePrevious ← DOM.item index children
+
+                  case maybePrevious of
+                    Just previous → do
+                      _ ← DOM.insertBefore previous fragment' parent
+                      pure unit
+
+                    _ →
+                      pure unit
+
+
+                  action ← Ref.modifyRef' eventSystems \systems →
+                    case insertAt index system' systems of
+                      Just updated →
+                        { state: updated
+                        , value: pure unit
+                        }
+
+                      Nothing →
+                        { state: systems
+                        , value: cancel'
+                        }
+
+                  action
 
         pure
           ( Types.EventSystem
               { cancel: do
-                  lastCanceller ← Ref.readRef lastWatcher'sCanceller
-                  lastCanceller -- Run the last watcher.
+                  systems ← Ref.readRef eventSystems
+                  for_ systems \(Types.EventSystem { cancel }) →
+                    cancel
+
               , events: output
-              , handleUpdate: updater
+              , handleUpdate: \update → do
+                  case listener update of
+                    Types.Rerender rerender → do
+                      let
+                        updateCancellers instructions
+                          = case uncons instructions of
+                              Just { head, tail } → do
+                                systems' ← execute head
+                                pure (Loop tail)
+
+                              Nothing →
+                                pure (Done unit)
+
+                      systems ← Ref.readRef eventSystems
+                      tailRecM updateCancellers rerender
+
+                    Types.Ignore →
+                      pure unit
+
+                  final ← Ref.readRef eventSystems
+                  for_ final \(Types.EventSystem { handleUpdate }) →
+                    handleUpdate update
               }
           )

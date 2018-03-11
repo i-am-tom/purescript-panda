@@ -10,7 +10,7 @@ import Prelude
 -- | by the user.
 type Renderer eff update state event
   = { state ∷ state, update ∷ update }
-  → Types.Modification (Types.Component eff update state event)
+  → Array (Types.ComponentUpdate eff update state event)
 
 -- | Build a general-purpose watcher. This could be seen as the "advanced"
 -- | watcher, because all the other functions are much easier to use.
@@ -20,9 +20,7 @@ watch
       , update ∷ update
       }
     → Types.ShouldUpdate
-        ( Types.Modification
-            ( Types.Component eff update state event
-            )
+        ( Array (Types.ComponentUpdate eff update state event)
         )
     )
   → Types.Component eff update state event

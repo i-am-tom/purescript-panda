@@ -1,49 +1,46 @@
 module Panda.Property.Watchers where
 
 import Data.Foldable        (find)
-import Data.Maybe           (Maybe(..), maybe)
+import Data.Maybe           (Maybe(..))
 import Panda.Internal.Types as Types
 
 import Prelude
 
 type Renderer update state event
   = { state ∷ state, update ∷ update }
-  → Types.Modification String
+  → Array Types.PropertyUpdate
 
 -- | General constructor for property watches. Kind of the "advanced mode" -
 -- | use the other functions if possible.
 watch
   ∷ ∀ update state event
-  . String
-  → ( { state  ∷ state
+  . ( { state  ∷ state
       , update ∷ update
       }
-    → Types.ShouldUpdate (Types.Modification String)
+    → Types.ShouldUpdate (Array Types.PropertyUpdate)
     )
   → Types.Property update state event
-watch key listener = Types.PWatcher (Types.PropertyWatcher { key, listener })
+watch listener = Types.PWatcher (Types.PropertyWatcher listener)
 
 -- | Run a property update regardless of the update that is detected. For
 -- | larger applications, this will happen very regularly, so be careful with
 -- | this...
 watchAny
   ∷ ∀ update state event
-  . String
-  → Renderer update state event
+  . Renderer update state event
   → Types.Property update state event
-watchAny key renderer
-  = watch key \update → Types.Rerender (renderer update)
+watchAny renderer
+  = watch \update → Types.Rerender (renderer update)
 
 -- | Watch for a particular update.
 watchFor
   ∷ ∀ update state event
   . Eq update
-  ⇒ String
-  → update
+  ⇒ update
   → Renderer update state event
   → Types.Property update state event
-watchFor key search renderer
-  = watch key \change →
+watchFor search renderer
+  = watch \change →
       if change.update == search
         then Types.Rerender (renderer change)
         else Types.Ignore
@@ -54,14 +51,13 @@ watchFor key search renderer
 -- applied.
 watchSet
   ∷ ∀ update state event
-  . String
-  → Array
+  . Array
       { match    ∷ update → Boolean
       , renderer ∷ Renderer update state event
       }
   → Types.Property update state event
-watchSet key routes
-  = watch key \change →
+watchSet routes
+  = watch \change →
       let get
             ∷ ∀ r. Array { match ∷ update → Boolean | r }
             → Maybe { match ∷ update → Boolean | r }
@@ -69,7 +65,7 @@ watchSet key routes
 
           render
             ∷ ∀ r. { renderer ∷ Renderer update state event | r }
-            → Types.Modification String
+            → Array Types.PropertyUpdate
           render { renderer } = renderer change
       in
         case get routes of
@@ -81,12 +77,11 @@ watchSet key routes
 -- | Update a property whenever a predicate is satisfied.
 watchWhen
   ∷ ∀ update state event
-  . String
-  → ({ state ∷ state, update ∷ update } → Boolean)
+  . ({ state ∷ state, update ∷ update } → Boolean)
   → Renderer update state event
   → Types.Property update state event
-watchWhen key predicate renderer
-  = watch key \change →
+watchWhen predicate renderer
+  = watch \change →
       if predicate change
         then Types.Rerender (renderer change)
         else Types.Ignore

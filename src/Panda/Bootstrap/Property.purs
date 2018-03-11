@@ -10,10 +10,9 @@ import DOM.HTML.Event.EventTypes as DOM.Events
 import DOM.Node.Element          (removeAttribute, setAttribute) as DOM
 import DOM.Node.Types            (Element, elementToEventTarget) as DOM
 import Data.Filterable           (filtered)
-import Data.Foldable             (sequence_)
+import Data.Foldable             (for_)
 import Data.Monoid               (mempty)
-import FRP.Event                 (Event, create, subscribe) as FRP
-import FRP.Event.Class           (withLast) as FRP
+import FRP.Event                 (Event, create) as FRP
 import Panda.Internal.Types      as Types
 
 import Prelude
@@ -149,20 +148,22 @@ render element
               }
           )
 
-      Types.PWatcher (Types.PropertyWatcher { key, listener }) → do
+      Types.PWatcher (Types.PropertyWatcher listener) → do
         pure
           ( Types.EventSystem
               { cancel: mempty
               , events: empty
               , handleUpdate: \update → do
                   case listener update of
-                    Types.Rerender update' →
-                      case update' of
-                        Types.Update value →
-                          DOM.setAttribute key value element
+                    Types.Rerender updates →
+                      for_ updates \(Types.PropertyUpdate instruction) →
+                        case instruction of
+                          Types.ObjectInsert key value →
+                            DOM.setAttribute key value element
 
-                        Types.Remove →
-                          DOM.removeAttribute key element
+                          Types.ObjectDelete key →
+                            DOM.removeAttribute key element
+
                     Types.Ignore →
                       pure unit
               }
