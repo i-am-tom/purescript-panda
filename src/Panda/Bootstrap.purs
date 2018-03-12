@@ -1,11 +1,14 @@
-module Panda.Bootstrap where
+module Panda.Bootstrap
+  ( bootstrap
+  , render
+  ) where
 
 import Control.Alt              ((<|>))
 import Control.Monad.Eff        (Eff)
-import Control.Monad.Eff.Ref    (modifyRef', newRef, readRef) as Ref
+import Control.Monad.Eff.Ref    (modifyRef, modifyRef', newRef, readRef, Ref) as Ref
 import Control.Monad.Rec.Class  (Step(..), tailRecM)
 import Control.Plus             (empty)
-import Data.Array               ((!!), deleteAt, insertAt, uncons)
+import Data.Array               ((!!), deleteAt, insertAt, uncons, unsnoc, updateAtIndices)
 import DOM.Node.Document        (createDocumentFragment, createElement, createTextNode) as DOM
 import DOM.Node.Node            (appendChild, childNodes, insertBefore, removeChild) as DOM
 import DOM.Node.NodeList        (item) as DOM
@@ -14,12 +17,74 @@ import Data.Foldable            (fold, for_)
 import Data.Maybe               (Maybe(..))
 import Data.Monoid              (mempty)
 import Data.Traversable         (traverse)
+import Data.Tuple.Nested        ((/\))
 import FRP.Event                (Event, create, subscribe) as FRP
 import FRP.Event.Class          (fold, sampleOn) as FRP
 import Panda.Bootstrap.Property as Property
 import Panda.Internal.Types     as Types
 
 import Prelude
+
+execute
+  ∷ ∀ eff update state event
+  . DOM.Node
+  → DOM.Document
+  → Ref.Ref (Array (Types.EventSystem (Types.FX eff) update state event))
+  → (event → Eff (Types.FX eff) Unit)
+  → Types.ComponentUpdate (Types.FX eff) update state event
+  → Eff (Types.FX eff) Unit
+execute parent document ref output (Types.ComponentUpdate instruction)
+  = case instruction of
+      Types.ArrayDeleteAt index → do
+        cleanup ← Ref.modifyRef' ref \systems →
+          case deleteAt index systems, systems !! index of
+            Just updated, Just (Types.EventSystem { cancel }) →
+              { state: updated, value: cancel }
+
+            _, _ →
+              { state: systems, value: pure unit }
+
+        cleanup
+
+      Types.ArrayInsertAt index spec → do
+        fragment ← DOM.createDocumentFragment document
+        let fragment' = DOM.documentFragmentToNode fragment
+
+        Types.EventSystem system ← render document fragment' spec
+        cancelEventListener      ← FRP.subscribe system.events output
+
+        let
+          cancel' = do
+            system.cancel
+            cancelEventListener
+
+          system' = Types.EventSystem (system { cancel = cancel' })
+
+        children      ← DOM.childNodes fragment'
+        maybePrevious ← DOM.item index children
+
+        case maybePrevious of
+          Just previous → do
+            _ ← DOM.insertBefore previous fragment' parent
+            pure unit
+
+          _ →
+            pure unit
+
+
+        action ← Ref.modifyRef' ref \systems →
+          case insertAt index system' systems of
+            Just updated →
+              { state: updated
+              , value: pure unit
+              }
+
+            Nothing →
+              { state: systems
+              , value: cancel'
+              }
+
+        action
 
 -- | Set up and kick off a Panda application. This creates the element tree,
 -- | and ties the update handler to the event stream.
@@ -31,8 +96,8 @@ bootstrap
   → Eff (Types.FX eff) (Types.EventSystem (Types.FX eff) update state event)
 
 bootstrap document parent { initial, subscription, update, view } = do
-  (Types.EventSystem renderedPage) ← render document parent view
-  deltas                           ← FRP.create
+  Types.EventSystem renderedPage ← render document parent view
+  deltas                         ← FRP.create
 
   let
     -- | Iterations of state as updates are applied. The most recent value is
@@ -85,14 +150,14 @@ render document parent
   = case _ of
       Types.CText text → do
         element ← DOM.createTextNode text document
-        let elementNode = DOM.textToNode element
+        let element' = DOM.textToNode element
 
-        _ ← DOM.appendChild elementNode parent
+        _ ← DOM.appendChild element' parent
 
         pure
           ( Types.EventSystem
               { cancel: do
-                  _ ← DOM.removeChild elementNode parent
+                  _ ← DOM.removeChild element' parent
                   pure unit
               , events: empty
               , handleUpdate: mempty
@@ -151,63 +216,6 @@ render document parent
         { event: output, push: toOutput } ← FRP.create
         eventSystems                      ← Ref.newRef mempty
 
-        let
-          execute
-            ∷ Types.ComponentUpdate (Types.FX eff) update state event
-            → Eff (Types.FX eff) Unit
-          execute (Types.ComponentUpdate instruction)
-            = case instruction of
-                Types.ArrayDeleteAt index → do
-                  cleanup ← Ref.modifyRef' eventSystems \systems →
-                    case deleteAt index systems, systems !! index of
-                      Just updated, Just (Types.EventSystem { cancel }) →
-                        { state: updated, value: cancel }
-
-                      _, _ →
-                        { state: systems, value: pure unit }
-
-                  cleanup
-
-                Types.ArrayInsertAt index spec → do
-                  fragment ← DOM.createDocumentFragment document
-                  let fragment' = DOM.documentFragmentToNode fragment
-
-                  Types.EventSystem system ← render document fragment' spec
-                  cancelEventListener      ← FRP.subscribe system.events toOutput
-
-                  let
-                    cancel' = do
-                      system.cancel
-                      cancelEventListener
-
-                    system' = Types.EventSystem (system { cancel = cancel' })
-
-                  children      ← DOM.childNodes fragment'
-                  maybePrevious ← DOM.item index children
-
-                  case maybePrevious of
-                    Just previous → do
-                      _ ← DOM.insertBefore previous fragment' parent
-                      pure unit
-
-                    _ →
-                      pure unit
-
-
-                  action ← Ref.modifyRef' eventSystems \systems →
-                    case insertAt index system' systems of
-                      Just updated →
-                        { state: updated
-                        , value: pure unit
-                        }
-
-                      Nothing →
-                        { state: systems
-                        , value: cancel'
-                        }
-
-                  action
-
         pure
           ( Types.EventSystem
               { cancel: do
@@ -222,12 +230,13 @@ render document parent
                       let
                         updateCancellers instructions
                           = case uncons instructions of
-                              Just { head, tail } → do
-                                systems' ← execute head
-                                pure (Loop tail)
-
                               Nothing →
                                 pure (Done unit)
+
+                              Just { head, tail } → do
+                                systems' ← execute parent document
+                                  eventSystems toOutput head
+                                pure (Loop tail)
 
                       systems ← Ref.readRef eventSystems
                       tailRecM updateCancellers rerender

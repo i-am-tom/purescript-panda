@@ -21,8 +21,8 @@ data ShouldUpdate a
 
 -- | Array updates as an algebra.
 data ArrayUpdate value
-  = ArrayInsertAt Int value
-  | ArrayDeleteAt Int
+  = ArrayDeleteAt Int
+  | ArrayInsertAt Int value
 
 -- | The only type we're interested in is `Component`!
 newtype ComponentUpdate eff update state event
