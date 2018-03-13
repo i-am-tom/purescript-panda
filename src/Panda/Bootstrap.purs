@@ -5,19 +5,17 @@ module Panda.Bootstrap
 
 import Control.Alt              ((<|>))
 import Control.Monad.Eff        (Eff)
-import Control.Monad.Eff.Ref    (modifyRef, modifyRef', newRef, readRef, Ref) as Ref
+import Control.Monad.Eff.Ref    (modifyRef', newRef, readRef, Ref) as Ref
 import Control.Monad.Rec.Class  (Step(..), tailRecM)
 import Control.Plus             (empty)
-import Data.Array               ((!!), deleteAt, insertAt, uncons, unsnoc, updateAtIndices)
+import Data.Array               as Array
 import DOM.Node.Document        (createDocumentFragment, createElement, createTextNode) as DOM
-import DOM.Node.Node            (appendChild, childNodes, insertBefore, removeChild) as DOM
-import DOM.Node.NodeList        (item) as DOM
+import DOM.Node.Node            (appendChild, removeChild) as DOM
 import DOM.Node.Types           (Document, Node, documentFragmentToNode, elementToNode, textToNode) as DOM
 import Data.Foldable            (fold, for_)
 import Data.Maybe               (Maybe(..))
 import Data.Monoid              (mempty)
 import Data.Traversable         (traverse)
-import Data.Tuple.Nested        ((/\))
 import FRP.Event                (Event, create, subscribe) as FRP
 import FRP.Event.Class          (fold, sampleOn) as FRP
 import Panda.Bootstrap.Property as Property
@@ -37,12 +35,21 @@ execute parent document ref output (Types.ComponentUpdate instruction)
   = case instruction of
       Types.ArrayDeleteAt index → do
         cleanup ← Ref.modifyRef' ref \systems →
-          case deleteAt index systems, systems !! index of
+          case Array.deleteAt index systems, systems Array.!! index of
             Just updated, Just (Types.EventSystem { cancel }) →
               { state: updated, value: cancel }
 
             _, _ →
               { state: systems, value: pure unit }
+
+        cleanup
+
+      Types.ArrayEmpty → do
+        cleanup ← Ref.modifyRef' ref \systems →
+          { state: []
+          , value: for_ systems \(Types.EventSystem { cancel }) →
+              cancel
+          }
 
         cleanup
 
@@ -58,33 +65,64 @@ execute parent document ref output (Types.ComponentUpdate instruction)
             system.cancel
             cancelEventListener
 
-          system' = Types.EventSystem (system { cancel = cancel' })
-
-        children      ← DOM.childNodes fragment'
-        maybePrevious ← DOM.item index children
-
-        case maybePrevious of
-          Just previous → do
-            _ ← DOM.insertBefore previous fragment' parent
-            pure unit
-
-          _ →
-            pure unit
-
+          system'
+            = Types.EventSystem
+                ( system { cancel = cancel' }
+                )
 
         action ← Ref.modifyRef' ref \systems →
-          case insertAt index system' systems of
-            Just updated →
-              { state: updated
-              , value: pure unit
+          if Array.null systems
+            then
+              { state: [system']
+              , value: do
+                  _ ← DOM.appendChild fragment' parent
+                  pure unit
               }
 
-            Nothing →
-              { state: systems
-              , value: cancel'
+            else
+              { state: Array.cons system' systems
+              , value: pure unit --do
+--                  children      ← DOM.childNodes fragment'
+--                  maybePrevious ← DOM.item index children
+--
+--                  case maybePrevious of
+--                    Just previous → do
+--                      _ ← DOM.insertBefore fragment' previous parent
+--                      pure unit
+--
+--                    _ →
+--                      pure unit
               }
 
         action
+
+      Types.ArrayPop → do
+        action ← Ref.modifyRef' ref \systems →
+          case Array.unsnoc systems of
+            Just { init, last: Types.EventSystem { cancel } } →
+              { state: init, value: cancel }
+
+            Nothing →
+              { state: [], value: pure unit }
+
+        action
+
+      Types.ArrayPush component →
+        pure unit
+
+      Types.ArrayShift → do
+        action ← Ref.modifyRef' ref \systems →
+          case Array.uncons systems of
+            Just { head: Types.EventSystem { cancel }, tail } →
+              { state: tail, value: cancel }
+
+            Nothing →
+              { state: [], value: pure unit }
+
+        action
+
+      Types.ArrayUnshift component → do
+        pure unit
 
 -- | Set up and kick off a Panda application. This creates the element tree,
 -- | and ties the update handler to the event stream.
@@ -229,7 +267,7 @@ render document parent
                     Types.Rerender rerender → do
                       let
                         updateCancellers instructions
-                          = case uncons instructions of
+                          = case Array.uncons instructions of
                               Nothing →
                                 pure (Done unit)
 

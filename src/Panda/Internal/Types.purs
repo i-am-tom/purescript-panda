@@ -19,23 +19,30 @@ data ShouldUpdate a
   = Rerender a
   | Ignore
 
--- | Array updates as an algebra.
+-- | Array updates as an algebra. This is how we'll manipulate the DOM
+-- | children.
 data ArrayUpdate value
   = ArrayDeleteAt Int
+  | ArrayEmpty
   | ArrayInsertAt Int value
+  | ArrayPop
+  | ArrayPush value
+  | ArrayShift
+  | ArrayUnshift value
 
 -- | The only type we're interested in is `Component`!
 newtype ComponentUpdate eff update state event
   = ComponentUpdate (ArrayUpdate (Component eff update state event))
 
 -- | Object updates as an algebra.
-data ObjectUpdate key value
-  = ObjectInsert key value
-  | ObjectDelete key
+data MapUpdate value
+  = MapDelete String
+  | MapInsert String value
+  | MapRename String value
 
 -- | Property updates are object updates specialised to strings.
 newtype PropertyUpdate
-  = PropertyUpdate (ObjectUpdate String String)
+  = PropertyUpdate (MapUpdate String)
 
 -- | All the effects that occur as a result of Panda! We'll just use this for
 -- | the global signature until the effect row goes...
