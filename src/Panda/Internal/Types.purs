@@ -14,13 +14,10 @@ import Unsafe.Coerce         (unsafeCoerce)
 
 import Prelude
 
--- | Should we update at all? Or is the DOM fine as it is?
 data ShouldUpdate a
   = Rerender a
   | Ignore
 
--- | Array updates as an algebra. This is how we'll manipulate the DOM
--- | children.
 data ArrayUpdate value
   = ArrayDeleteAt Int
   | ArrayEmpty
@@ -30,22 +27,16 @@ data ArrayUpdate value
   | ArrayShift
   | ArrayUnshift value
 
--- | The only type we're interested in is `Component`!
 newtype ComponentUpdate eff update state event
   = ComponentUpdate (ArrayUpdate (Component eff update state event))
 
--- | Object updates as an algebra.
 data MapUpdate value
-  = MapDelete String
-  | MapInsert String value
-  | MapRename String value
+  = MapInsert String value
+  | MapDelete String
 
--- | Property updates are object updates specialised to strings.
 newtype PropertyUpdate
   = PropertyUpdate (MapUpdate String)
 
--- | All the effects that occur as a result of Panda! We'll just use this for
--- | the global signature until the effect row goes...
 type FX eff
   = ( dom ∷ DOM
     , frp ∷ FRP
@@ -53,10 +44,6 @@ type FX eff
     | eff
     )
 
--- | Sum type of all sensible event handlers that can be applied to elements.
--- | Full disclosure: I stole this list from Nate Faubion's wonderful
--- | [purescript-spork](https://pursuit.purescript.org/packages/purescript-spork/)
--- | library.
 data Producer
   = OnAbort
   | OnBlur
@@ -95,75 +82,48 @@ data Producer
   | OnSubmit
   | OnTransitionEnd
 
--- | A static property is just key => value, and can't do anything clever. This
--- | should be used whenever you want to use a property that won't be affectted
--- | by state changes or events.
 newtype PropertyStatic
   = PropertyStatic
       { key   ∷ String
       , value ∷ String
       }
 
--- | A `Watcher` property can vary depending on the state and most recent
--- | update, which allows properties to respond to events. Given an update, a
--- | `Watcher` can `Maybe` decide to update the value. This update is either
--- | `Just` the string to which the property should be set, or that it should
--- | be set to `Nothing` (hence the double-`Maybe`).
 newtype PropertyWatcher update state
   = PropertyWatcher
       ( { update ∷ update, state ∷ state }
       → ShouldUpdate (Array PropertyUpdate)
       )
 
--- | A producer is a property that... well, produces events! These properties
--- | are indexed by `Producer` values. Using the producer helpers will do you a
--- | lot of favours, as the event has already been coerced to the type
--- | appropriate to that particular DOM action. A particular DOM event can be
--- | ignored if `onEvent` returns a `Nothing`.
 newtype PropertyProducer event
   = PropertyProducer
       { key     ∷ Producer
       , onEvent ∷ DOM.Event → Maybe event
       }
 
--- | A property is just one of the above things: a static property, a property
--- | that depends on some events, or a property that produces events.
 data Property update state event
   = PStatic    PropertyStatic
   | PWatcher  (PropertyWatcher  update state)
   | PProducer (PropertyProducer              event)
 
--- | A static component is one that has properties and potentially houses other
--- | components. These are the things you _actually_ render to the DOM, and
--- | that get converted to HTML elements. Note that the children of a static
--- | component can absolutely be dynamic, and it can even have dynamic
--- | properties. All this represents is an HTML element.
-newtype ComponentStatic eff update state event
-  = ComponentStatic
-      { children   ∷ Array (Component eff update state event)
-      , properties ∷ Array (Property      update state event)
-      , tagName    ∷ String
-      }
+data Children eff update state event
+  = StaticChildren
+      ( Array (Component eff update state event)
+      )
 
--- | A watcher component is one that varies according to the state and updates
--- | in the application loop. Because a re-render is a destructive process, it
--- | is recommended that, the more common the watcher's interest, the lower in
--- | the component tree it should occur. If an event is likely to be fired
--- | every second and that will cause the re-rendering of the entire tree,
--- | performance won't be great.
-newtype ComponentWatcher eff update state event
-  = ComponentWatcher
+  | DynamicChildren
       ( { update ∷ update
         , state  ∷ state
         }
       → ShouldUpdate (Array (ComponentUpdate eff update state event))
       )
 
--- | Applications can be nested arbitrarily, with the proviso that there is
--- | some way to translate from "parent" to "child". The actual types of the
--- | child are existential, and are thus not carried up the tree: "as long as
--- | you can tell me how to convert updates and states for the child, and then
--- | 'unconvert' events from the child, I can embed this application".
+newtype ComponentElement eff update state event
+  = ComponentElement
+      { children   ∷ Children eff update state event
+      , properties ∷ Array (Property update state event)
+      , tagName    ∷ String
+      }
+
 newtype ComponentDelegate eff update state event subupdate substate subevent
   = ComponentDelegate
       { delegate ∷ Application eff subupdate substate subevent
@@ -174,12 +134,9 @@ newtype ComponentDelegate eff update state event subupdate substate subevent
             }
       }
 
--- | A component delegate with the "subtypes" existentialised. This means we
--- | don't have to worry about carrying it up the tree.
 foreign import data ComponentDelegateX
   ∷ # Effect → Type → Type → Type → Type
 
--- | Existentialise the "subtypes" in a component delegate.
 mkComponentDelegateX
   ∷ ∀ eff update state event subupdate substate subevent
   . ComponentDelegate eff update state event subupdate substate subevent
@@ -187,7 +144,6 @@ mkComponentDelegateX
 mkComponentDelegateX
   = unsafeCoerce
 
--- | Un-existentialise a delegate, and deal with the "subtypes".
 runComponentDelegateX
   ∷ ∀ eff update state event result
   . ( ∀ subupdate substate subevent
@@ -199,16 +155,11 @@ runComponentDelegateX
 runComponentDelegateX
   = unsafeCoerce
 
--- | A component is either a "static" element, a watcher, a delegate, or text.
 data Component eff update state event
-  = CStatic   (ComponentStatic    eff update state event)
-  | CWatcher  (ComponentWatcher   eff update state event)
+  = CElement  (ComponentElement   eff update state event)
   | CDelegate (ComponentDelegateX eff update state event)
   | CText String
 
--- | When `Component` or `Property` structures are rendered, an element is
--- | created, along with a system for handling events. This structure houses
--- | that system as a monoid, so that they can be combined more easily.
 newtype EventSystem eff update state event
   = EventSystem
       { cancel       ∷ Eff eff Unit
@@ -238,14 +189,6 @@ instance monoidEventSystem
         , handleUpdate: mempty
         }
 
--- | To create a Panda application, you must specify a view, a controller, and
--- | an initial state (as well as the initial update that will fire on render).
--- | `subscription` allows you to subscribe to external events (but can be
--- | ignored using `Control.Plus.empty`. `update` takes a `dispatch` function
--- | forupdates, and the event that triggered it in the first place. Note the
--- | `dispatch` function takes a _function_ from state - this function
--- | guarantees that your modifications will be applied to the most recent
--- | state. This is helpful when your `update` function gets asynchronous.
 type Application eff update state event
   = { view         ∷ Component eff update state event
     , subscription ∷ FRP.Event event

@@ -8,6 +8,7 @@ import DOM.HTML                  (window) as DOM
 import DOM.HTML.Document         (body) as DOM
 import DOM.HTML.Types            (htmlDocumentToDocument, htmlElementToNode) as DOM
 import DOM.HTML.Window           (document) as DOM
+import DOM.Node.Node             (appendChild) as DOM
 import DOM.Node.Types            (Node) as DOM
 import Data.Maybe                (Maybe)
 import Data.Traversable          (for)
@@ -52,6 +53,10 @@ runApplicationIn
 runApplicationIn configuration node = do
   window   ← DOM.window
   document ← DOM.document window
+  let document' = DOM.htmlDocumentToDocument document
 
-  bootstrap (DOM.htmlDocumentToDocument document) node configuration
+  { system, element } ← bootstrap document' configuration
+  _ ← DOM.appendChild element node
+
+  pure system
 

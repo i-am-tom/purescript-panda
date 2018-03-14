@@ -158,10 +158,10 @@ render element
                     Types.Rerender updates →
                       for_ updates \(Types.PropertyUpdate instruction) →
                         case instruction of
-                          Types.ObjectInsert key value →
+                          Types.MapInsert key value →
                             DOM.setAttribute key value element
 
-                          Types.ObjectDelete key →
+                          Types.MapDelete key →
                             DOM.removeAttribute key element
 
                     Types.Ignore →
