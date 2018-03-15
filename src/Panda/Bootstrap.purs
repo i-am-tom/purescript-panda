@@ -7,9 +7,9 @@ import Control.Alt              ((<|>))
 import Control.Monad.Eff        (Eff)
 import Control.Monad.Eff.Ref    as Ref
 import Control.Monad.Rec.Class  (Step(..), tailRecM)
-import Data.Array               (deleteAt, index, snoc, uncons, unsnoc) as Array
+import Data.Array               (cons, deleteAt, index, insertAt, snoc, uncons, unsnoc) as Array
 import DOM.Node.Document        (createElement, createTextNode) as DOM
-import DOM.Node.Node            (appendChild, childNodes, removeChild) as DOM
+import DOM.Node.Node            (appendChild, childNodes, insertBefore, removeChild) as DOM
 import DOM.Node.NodeList        (toArray) as DOM
 import DOM.Node.Types           (Document, Node, elementToNode, textToNode) as DOM
 import Data.Foldable            (foldMap, traverse_)
@@ -207,8 +207,21 @@ execute document parent systems (Types.ComponentUpdate update) = do
 
         pure []
 
-      Types.ArrayInsertAt index spec →
-        pure []
+      Types.ArrayInsertAt index spec → do
+        { element, system } ← render document spec
+
+        let
+          updated = { systems': _, child: _ }
+            <$> Array.insertAt index system systems
+            <*> Array.index children index
+
+        case updated of
+          Just { systems', child } → do
+            _ ← DOM.insertBefore child element parent
+            pure systems'
+
+          Nothing →
+            pure systems
 
       Types.ArrayPop → do
         let
@@ -256,5 +269,14 @@ execute document parent systems (Types.ComponentUpdate update) = do
           Nothing →
             pure systems
 
-      Types.ArrayUnshift _ →
-        pure []
+      Types.ArrayUnshift spec → do
+        let
+          command
+            = case Array.uncons children of
+                Nothing       → DOM.appendChild
+                Just { head } → DOM.insertBefore head
+
+        { element, system } ← render document spec
+        _ ← command element parent
+
+        pure (Array.cons system systems)
