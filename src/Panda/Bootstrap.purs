@@ -7,11 +7,12 @@ import Control.Alt              ((<|>))
 import Control.Monad.Eff        (Eff)
 import Control.Monad.Eff.Ref    as Ref
 import Control.Monad.Rec.Class  (Step(..), tailRecM)
-import Data.Array               (uncons)
+import Data.Array               (deleteAt, index, snoc, uncons, unsnoc) as Array
 import DOM.Node.Document        (createElement, createTextNode) as DOM
-import DOM.Node.Node            (appendChild) as DOM
+import DOM.Node.Node            (appendChild, childNodes, removeChild) as DOM
+import DOM.Node.NodeList        (toArray) as DOM
 import DOM.Node.Types           (Document, Node, elementToNode, textToNode) as DOM
-import Data.Foldable            (foldMap)
+import Data.Foldable            (foldMap, traverse_)
 import Data.Maybe               (Maybe(..))
 import Data.Monoid              (mempty)
 import FRP.Event                (Event, create, subscribe) as FRP
@@ -141,15 +142,15 @@ render document
                   case listener update of
                     Types.Rerender rerender → do
                       rerender # tailRecM \instructions →
-                        case (uncons instructions) of
+                        case (Array.uncons instructions) of
                           Nothing →
                             pure (Done unit)
 
                           Just { head, tail } → do
                             systems ← Ref.readRef eventSystems
-                            _ ← pure (systems ∷ Array (Types.EventSystem (Types.FX eff) update state event))
 
-                            Ref.writeRef eventSystems systems
+                            updatedSystems ← execute document node systems head
+                            Ref.writeRef eventSystems updatedSystems
 
                             pure (Loop tail)
 
@@ -163,3 +164,97 @@ render document
           { element: node
           , system:  elementSystem <> propertySystem
           }
+
+execute
+  ∷ ∀ eff update state event
+  . DOM.Document
+  → DOM.Node
+  → Array (Types.EventSystem (Types.FX eff) update state event)
+  → Types.ComponentUpdate (Types.FX eff) update state event
+  → Eff (Types.FX eff)
+      ( Array
+          ( Types.EventSystem (Types.FX eff) update state event
+          )
+      )
+execute document parent systems (Types.ComponentUpdate update) = do
+  children ← DOM.childNodes parent >>= DOM.toArray
+
+  case update of
+      Types.ArrayDeleteAt index → do
+        let
+          result = { updated: _, element: _, system: _ }
+            <$> Array.deleteAt index systems
+            <*> Array.index children index
+            <*> Array.index systems  index
+
+        case result of
+          Just { updated, element, system: Types.EventSystem system } → do
+            _ ← DOM.removeChild element parent
+            system.cancel
+
+            pure updated
+
+          _ →
+            pure systems
+
+      Types.ArrayEmpty → do
+        systems # traverse_ \(Types.EventSystem { cancel }) →
+          cancel
+
+        children # traverse_ \node → do
+          _ ← DOM.removeChild node parent
+          pure unit
+
+        pure []
+
+      Types.ArrayInsertAt index spec →
+        pure []
+
+      Types.ArrayPop → do
+        let
+          result = { elements: _, eventSystems: _ }
+            <$> Array.unsnoc children
+            <*> Array.unsnoc systems
+
+        case result of
+          Just { elements, eventSystems } → do
+            let
+              Types.EventSystem system
+                = eventSystems.last
+
+            system.cancel
+            _ ← DOM.removeChild elements.last parent
+
+            pure eventSystems.init
+
+          Nothing →
+            pure systems
+
+      Types.ArrayPush spec → do
+        { element, system } ← render document spec
+
+        _ ← DOM.appendChild element parent
+        pure (Array.snoc systems system)
+
+      Types.ArrayShift → do
+        let
+          result = { elements: _, eventSystems: _ }
+            <$> Array.uncons children
+            <*> Array.uncons systems
+
+        case result of
+          Just { elements, eventSystems } → do
+            let
+              Types.EventSystem system
+                = eventSystems.head
+
+            system.cancel
+            _ ← DOM.removeChild elements.head parent
+
+            pure eventSystems.tail
+
+          Nothing →
+            pure systems
+
+      Types.ArrayUnshift _ →
+        pure []
