@@ -7,7 +7,7 @@ import Control.Alt              ((<|>))
 import Control.Monad.Eff        (Eff)
 import Control.Monad.Eff.Ref    as Ref
 import Control.Monad.Rec.Class  (Step(..), tailRecM)
-import Data.Array               (cons, deleteAt, index, insertAt, snoc, uncons, unsnoc) as Array
+import Data.Array               (cons, deleteAt, index, insertAt, length, snoc, uncons, unsnoc) as Array
 import DOM.Node.Document        (createElement, createTextNode) as DOM
 import DOM.Node.Node            (appendChild, childNodes, insertBefore, removeChild) as DOM
 import DOM.Node.NodeList        (toArray) as DOM
@@ -228,37 +228,31 @@ execute document parent systems (Types.ComponentUpdate update) = do
 
       Types.ArrayMove from to → do
         let
-          elements
-            = { source: _, target: _ }
-                <$> Array.index children from
-                <*> Array.index children to
-
-          systems' = do
+          moveSystem = do
             system ← Array.index systems from
-            tmp    ← Array.deleteAt from systems
+            let to' = if from < to then to - 1 else to
 
-            let
-              insertIndex
-                = if from < to
-                    then to - 1
-                    else to
+            tmp ← Array.deleteAt from systems
+            Array.insertAt to' system tmp
 
-            Array.insertAt insertIndex system tmp
+          moveElement = do
+            element ← Array.index children from
+
+            if to == Array.length children
+              then pure (DOM.appendChild element parent)
+              else do
+                target ← Array.index children to
+                pure (DOM.insertBefore element target parent)
 
           plan
-            = { elements: _, systems: _ }
-                <$> elements
-                <*> systems'
+            = { systems: _, action: _ }
+                <$> moveSystem
+                <*> moveElement
 
         case plan of
-          Just moves → do
-            -- This will remove it from the old location, too :)
-            _ ← DOM.insertBefore
-                  moves.elements.source
-                  moves.elements.target
-                  parent
-
-            pure moves.systems
+          Just result → do
+            _ ← result.action
+            pure result.systems
 
           Nothing →
             pure systems
