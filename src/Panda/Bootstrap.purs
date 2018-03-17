@@ -226,6 +226,43 @@ execute document parent systems (Types.ComponentUpdate update) = do
           Nothing →
             pure systems
 
+      Types.ArrayMove from to → do
+        let
+          elements
+            = { source: _, target: _ }
+                <$> Array.index children from
+                <*> Array.index children to
+
+          systems' = do
+            system ← Array.index systems from
+            tmp    ← Array.deleteAt from systems
+
+            let
+              insertIndex
+                = if from < to
+                    then to - 1
+                    else to
+
+            Array.insertAt insertIndex system tmp
+
+          plan
+            = { elements: _, systems: _ }
+                <$> elements
+                <*> systems'
+
+        case plan of
+          Just moves → do
+            -- This will remove it from the old location, too :)
+            _ ← DOM.insertBefore
+                  moves.elements.source
+                  moves.elements.target
+                  parent
+
+            pure moves.systems
+
+          Nothing →
+            pure systems
+
       Types.ArrayPop → do
         let
           result = { elements: _, eventSystems: _ }
@@ -277,7 +314,7 @@ execute document parent systems (Types.ComponentUpdate update) = do
           command
             = case Array.uncons children of
                 Nothing       → DOM.appendChild
-                Just { head } → DOM.insertBefore head
+                Just { head } → (_ `DOM.insertBefore` head)
 
         { element, system } ← render document spec
         _ ← command element parent

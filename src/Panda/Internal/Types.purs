@@ -20,6 +20,7 @@ data ArrayUpdate value
   = ArrayDeleteAt Int
   | ArrayEmpty
   | ArrayInsertAt Int value
+  | ArrayMove Int Int
   | ArrayPop
   | ArrayPush value
   | ArrayShift
