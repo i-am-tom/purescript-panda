@@ -55,12 +55,10 @@ makeProducer'
   → (DOM.Event → Maybe event)
   → Types.Property update state event
 makeProducer' key onEvent
-  = Types.PProducer
-      ( Types.PropertyProducer
-          { key
-          , onEvent
-          }
-      )
+  = Types.PropertyProducer
+      { key
+      , onEvent
+      }
 
 -- | Specifically build a producer of a given input type.
 makeProducer
@@ -223,12 +221,10 @@ type StaticProperty
 
 make ∷ String → String → StaticProperty
 make key value'
-  = Types.PStatic
-      ( Types.PropertyStatic
-          { key
-          , value: value'
-          }
-      )
+  = Types.PropertyStatic
+      { key
+      , value: value'
+      }
 
 accept ∷ String → StaticProperty
 accept = make "accept"

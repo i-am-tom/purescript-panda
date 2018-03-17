@@ -12,6 +12,7 @@ import DOM.Node.Document        (createElement, createTextNode) as DOM
 import DOM.Node.Node            (appendChild, childNodes, insertBefore, removeChild) as DOM
 import DOM.Node.NodeList        (toArray) as DOM
 import DOM.Node.Types           (Document, Node, elementToNode, textToNode) as DOM
+import Data.Filterable          (filterMap)
 import Data.Foldable            (foldMap, traverse_)
 import Data.Maybe               (Maybe(..))
 import Data.Monoid              (mempty)
@@ -22,6 +23,8 @@ import Panda.Internal.Types     as Types
 
 import Prelude
 
+-- | Given an application, produce the DOM element and the system of events
+-- | around it. This is mutually recursive with the `render` function.
 bootstrap
   ∷ ∀ eff update state event
   . DOM.Document
@@ -38,6 +41,7 @@ bootstrap document { initial, subscription, update, view } = do
   deltas ← FRP.create
 
   let
+    -- The current state of the application.
     states' ∷ FRP.Event { state ∷ state, update ∷ update }
     states' = FRP.fold (\delta { state } → delta state) deltas.event initial
 
@@ -71,6 +75,7 @@ bootstrap document { initial, subscription, update, view } = do
             }
     }
 
+-- | Given a component, render the DOM node, and set up the event system.
 render
   ∷ ∀ eff update state event
   . DOM.Document
@@ -90,16 +95,16 @@ render document
           , system: mempty
           }
 
-      Types.CDelegate delegateE →
+      Types.ComponentDelegate delegateE →
         delegateE # Types.runComponentDelegateX
-          \(Types.ComponentDelegate { delegate, focus }) → do
+          \({ delegate, focus }) → do
               { element, system: Types.EventSystem system }
                   ← bootstrap document delegate
 
               pure
                 { element
                 , system: Types.EventSystem $ system
-                    { events = map focus.event system.events
+                    { events = filterMap focus.event system.events
                     , handleUpdate = \{ state, update } →
                         case focus.update update of
                           Just subupdate →
@@ -113,7 +118,7 @@ render document
                     }
                 }
 
-      Types.CElement (Types.ComponentElement component) → do
+      Types.ComponentElement component → do
         tag             ← DOM.createElement component.tagName document
         propertySystem  ← foldMap (Property.render tag) component.properties
 
@@ -139,23 +144,18 @@ render document
                     cancel
 
               , handleUpdate: \update →
-                  case listener update of
-                    Types.Rerender rerender → do
-                      rerender # tailRecM \instructions →
-                        case (Array.uncons instructions) of
-                          Nothing →
-                            pure (Done unit)
+                  listener update # tailRecM \instructions →
+                    case (Array.uncons instructions) of
+                      Nothing →
+                        pure (Done unit)
 
-                          Just { head, tail } → do
-                            systems ← Ref.readRef eventSystems
+                      Just { head, tail } → do
+                        systems ← Ref.readRef eventSystems
 
-                            updatedSystems ← execute document node systems head
-                            Ref.writeRef eventSystems updatedSystems
+                        updatedSystems ← execute document node systems head
+                        Ref.writeRef eventSystems updatedSystems
 
-                            pure (Loop tail)
-
-                    Types.Ignore →
-                      pure unit
+                        pure (Loop tail)
 
               , events: output
               }
@@ -165,6 +165,8 @@ render document
           , system:  elementSystem <> propertySystem
           }
 
+-- | Given an element, and a set of update instructions, perform the update and
+-- | reconfigure the event systems.
 execute
   ∷ ∀ eff update state event
   . DOM.Document
@@ -176,6 +178,7 @@ execute
           ( Types.EventSystem (Types.FX eff) update state event
           )
       )
+
 execute document parent systems (Types.ComponentUpdate update) = do
   children ← DOM.childNodes parent >>= DOM.toArray
 

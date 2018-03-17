@@ -17,10 +17,10 @@ watch
   . ( { state  ∷ state
       , update ∷ update
       }
-    → Types.ShouldUpdate (Array Types.PropertyUpdate)
+    → Array Types.PropertyUpdate
     )
   → Types.Property update state event
-watch listener = Types.PWatcher (Types.PropertyWatcher listener)
+watch = Types.PropertyWatcher
 
 -- | Run a property update regardless of the update that is detected. For
 -- | larger applications, this will happen very regularly, so be careful with
@@ -30,7 +30,7 @@ watchAny
   . Renderer update state event
   → Types.Property update state event
 watchAny renderer
-  = watch \update → Types.Rerender (renderer update)
+  = watch \update → renderer update
 
 -- | Watch for a particular update.
 watchFor
@@ -42,8 +42,8 @@ watchFor
 watchFor search renderer
   = watch \change →
       if change.update == search
-        then Types.Rerender (renderer change)
-        else Types.Ignore
+        then renderer change
+        else []
 
 -- | Given a set of predicate/render pairs, update the property accordingly
 -- whenever one of the predicates is matched. Note that this is like a `case`:
@@ -70,9 +70,10 @@ watchSet routes
       in
         case get routes of
           Just routes' →
-            Types.Rerender (render routes')
+            render routes'
+
           Nothing →
-            Types.Ignore
+            []
 
 -- | Update a property whenever a predicate is satisfied.
 watchWhen
@@ -80,8 +81,9 @@ watchWhen
   . ({ state ∷ state, update ∷ update } → Boolean)
   → Renderer update state event
   → Types.Property update state event
+
 watchWhen predicate renderer
   = watch \change →
       if predicate change
-        then Types.Rerender (renderer change)
-        else Types.Ignore
+        then renderer change
+        else []

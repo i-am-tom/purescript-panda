@@ -13,7 +13,7 @@ import DOM.Node.Types            (Node) as DOM
 import Data.Maybe                (Maybe)
 import Data.Traversable          (for)
 import Panda.Bootstrap           (bootstrap)
-import Panda.Internal.Types      (Application, Component, FX, Property, ShouldUpdate(..)) as ExportedTypes
+import Panda.Internal.Types      (Application, Component, FX, Property, Updater) as ExportedTypes
 import Panda.Internal.Types      as Types
 
 import Prelude
@@ -50,6 +50,7 @@ runApplicationIn
   . Types.Application (Types.FX eff) update state event
   → DOM.Node
   → Eff (Types.FX eff) (Types.EventSystem (Types.FX eff) update state event)
+
 runApplicationIn configuration node = do
   window   ← DOM.window
   document ← DOM.document window

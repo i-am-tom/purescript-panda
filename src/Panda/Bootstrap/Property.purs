@@ -137,7 +137,7 @@ render
 
 render element
   = case _ of
-      Types.PStatic (Types.PropertyStatic { key, value }) → do
+      Types.PropertyStatic { key, value } → do
         DOM.setAttribute key value element
 
         pure
@@ -148,28 +148,23 @@ render element
               }
           )
 
-      Types.PWatcher (Types.PropertyWatcher listener) → do
+      Types.PropertyWatcher listener → do
         pure
           ( Types.EventSystem
               { cancel: mempty
               , events: empty
               , handleUpdate: \update → do
-                  case listener update of
-                    Types.Rerender updates →
-                      for_ updates \(Types.PropertyUpdate instruction) →
-                        case instruction of
-                          Types.MapInsert key value →
-                            DOM.setAttribute key value element
+                  for_ (listener update) \(Types.PropertyUpdate instruction) →
+                    case instruction of
+                      Types.MapInsert key value →
+                        DOM.setAttribute key value element
 
-                          Types.MapDelete key →
-                            DOM.removeAttribute key element
-
-                    Types.Ignore →
-                      pure unit
+                      Types.MapDelete key →
+                        DOM.removeAttribute key element
               }
           )
 
-      Types.PProducer (Types.PropertyProducer trigger) → do
+      Types.PropertyProducer trigger → do
         { listener, events } ← attach trigger element
 
         let

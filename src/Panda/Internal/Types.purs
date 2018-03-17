@@ -12,12 +12,10 @@ import FRP                   (FRP)
 import FRP.Event             (Event) as FRP
 import Unsafe.Coerce         (unsafeCoerce)
 
-import Prelude
+import Prelude ((<>), (*>), class Semigroup, Unit)
 
-data ShouldUpdate a
-  = Rerender a
-  | Ignore
-
+-- | An algebra for array updates. We use this to describe the ways in which we
+-- | would like to update the DOM.
 data ArrayUpdate value
   = ArrayDeleteAt Int
   | ArrayEmpty
@@ -27,16 +25,21 @@ data ArrayUpdate value
   | ArrayShift
   | ArrayUnshift value
 
+-- | Components are updated using the array algebra, but specialised to
+-- | component values.
 newtype ComponentUpdate eff update state event
   = ComponentUpdate (ArrayUpdate (Component eff update state event))
 
+-- | An algebra for map updates.
 data MapUpdate value
   = MapInsert String value
   | MapDelete String
 
+-- | Properties are updated using the map algebra specialised to strings.
 newtype PropertyUpdate
   = PropertyUpdate (MapUpdate String)
 
+-- | The effects that are used within Panda.
 type FX eff
   = ( dom ∷ DOM
     , frp ∷ FRP
@@ -44,6 +47,7 @@ type FX eff
     | eff
     )
 
+-- | All the possible event producers.
 data Producer
   = OnAbort
   | OnBlur
@@ -82,29 +86,30 @@ data Producer
   | OnSubmit
   | OnTransitionEnd
 
-newtype PropertyStatic
+-- | Properties are either static key/value pairs, listeners for DOM updates
+-- | (that can then change the properties on an element), or producers of
+-- | events (that then bubble up to the `update` function).
+data Property update state event
+
   = PropertyStatic
       { key   ∷ String
       , value ∷ String
       }
 
-newtype PropertyWatcher update state
-  = PropertyWatcher
-      ( { update ∷ update, state ∷ state }
-      → ShouldUpdate (Array PropertyUpdate)
+  | PropertyWatcher
+      ( { update ∷ update
+        , state ∷ state
+        }
+      → (Array PropertyUpdate)
       )
 
-newtype PropertyProducer event
-  = PropertyProducer
+  | PropertyProducer
       { key     ∷ Producer
       , onEvent ∷ DOM.Event → Maybe event
       }
 
-data Property update state event
-  = PStatic    PropertyStatic
-  | PWatcher  (PropertyWatcher  update state)
-  | PProducer (PropertyProducer              event)
-
+-- | Children on elements can either be static (not looking for events), or
+-- | dynamic. Note that the children of static children can be dynamic!
 data Children eff update state event
   = StaticChildren
       ( Array (Component eff update state event)
@@ -114,29 +119,44 @@ data Children eff update state event
       ( { update ∷ update
         , state  ∷ state
         }
-      → ShouldUpdate (Array (ComponentUpdate eff update state event))
+      → (Array (ComponentUpdate eff update state event))
       )
 
-newtype ComponentElement eff update state event
-  = ComponentElement
+-- | A component is either a delegate (embedded sub-application), element
+-- | (with properties and children and an HTML representation), or just some
+-- | text.
+data Component eff update state event
+  = ComponentDelegate (ComponentDelegateX eff update state event)
+
+  | ComponentElement
       { children   ∷ Children eff update state event
       , properties ∷ Array (Property update state event)
       , tagName    ∷ String
       }
 
-newtype ComponentDelegate eff update state event subupdate substate subevent
-  = ComponentDelegate
-      { delegate ∷ Application eff subupdate substate subevent
-      , focus
-          ∷ { update ∷ update   → Maybe subupdate
-            , state  ∷ state    → substate
-            , event  ∷ subevent → event
-            }
-      }
+  | CText String
 
+-- | Component delegates allow us to reuse applications within larger
+-- | applications, provided that we can wire up the two event systems. Note
+-- | the possible leak here: in certain cases, we _can_ isolate a
+-- | sub-application as a black box within a larger application by ignoring all
+-- | incoming updates and outgoing events.
+type ComponentDelegate eff update state event subupdate substate subevent
+  = { delegate ∷ Application eff subupdate substate subevent
+    , focus
+        ∷ { update ∷ update   → Maybe subupdate
+          , state  ∷ state    → substate
+          , event  ∷ subevent → Maybe event
+          }
+    }
+
+-- | In practice, we don't really care what the types are within a
+-- | sub-application, as long as we have an appropriate mapping to and from the
+-- | parent types. So, we can existentialise these inner types.
 foreign import data ComponentDelegateX
   ∷ # Effect → Type → Type → Type → Type
 
+-- | Make an existential component delegate.
 mkComponentDelegateX
   ∷ ∀ eff update state event subupdate substate subevent
   . ComponentDelegate eff update state event subupdate substate subevent
@@ -144,6 +164,8 @@ mkComponentDelegateX
 mkComponentDelegateX
   = unsafeCoerce
 
+-- | Retrieve a component delegate from an existentialised delegate, using the
+-- | functions within `focus` to wire up the two applications.
 runComponentDelegateX
   ∷ ∀ eff update state event result
   . ( ∀ subupdate substate subevent
@@ -155,11 +177,9 @@ runComponentDelegateX
 runComponentDelegateX
   = unsafeCoerce
 
-data Component eff update state event
-  = CElement  (ComponentElement   eff update state event)
-  | CDelegate (ComponentDelegateX eff update state event)
-  | CText String
-
+-- | An event system defines the update/event mechanism for a particular
+-- | component. When we update the DOM, we must remember to cancel outgoing
+-- | elements, and register new update handlers.
 newtype EventSystem eff update state event
   = EventSystem
       { cancel       ∷ Eff eff Unit
@@ -189,12 +209,22 @@ instance monoidEventSystem
         , handleUpdate: mempty
         }
 
+-- | Convenience synonym for defining the type of updaters within a Panda
+-- | application.
+type Updater eff update state event
+  = ((state → { update ∷ update, state ∷ state }) → Eff eff Unit)
+  → { event ∷ event, state ∷ state }
+  → Eff eff Unit
+
+-- | A Panda application is a view (written in the component DSL) that is
+-- | interpreted into an element (to be attached to the DOM), an event stream
+-- | (that is merged with the subscription) that feeds into the update
+-- | function, that update function (which produces updates for the view), and
+-- | intiial state and update.
 type Application eff update state event
   = { view         ∷ Component eff update state event
     , subscription ∷ FRP.Event event
     , initial      ∷ { update ∷ update, state ∷ state }
-    , update       ∷ ((state → { update ∷ update, state ∷ state }) → Eff eff Unit)
-                   → { event ∷ event, state ∷ state }
-                   → Eff eff Unit
+    , update       ∷ Updater eff update state event
     }
 
