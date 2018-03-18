@@ -1,6 +1,7 @@
 module Test.Main where
 
 import Control.Monad.Eff
+import Control.Monad.Eff.Random (RANDOM)
 import Data.Foldable (sequence_)
 import Prelude (Unit)
 
@@ -13,15 +14,22 @@ import Test.Example.UnorderedList as UnorderedList
 import Test.Example.Buttons       as Buttons
 import Test.Example.Field         as Field
 import Test.Example.Form          as Form
+import Test.Example.Random        as Random
 
-examples :: forall eff. Array (Eff (P.FX eff) Unit)
+type FX eff
+  = ( random :: RANDOM
+    | P.FX eff
+    )
+
+examples :: forall eff. Array (Eff (FX eff) Unit)
 examples
   = [ HelloWorld.main
     , UnorderedList.main
     , Buttons.main
     , Field.main
     , Form.main
+    , Random.main
     ]
 
-main ∷ forall eff. Eff (P.FX eff) Unit
+main ∷ forall eff. Eff (FX eff) Unit
 main = sequence_ examples
