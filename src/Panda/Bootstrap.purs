@@ -17,7 +17,6 @@ import Data.Foldable            (foldMap, traverse_)
 import Data.Maybe               (Maybe(..))
 import Data.Monoid              (mempty)
 import FRP.Event                (Event, create, subscribe) as FRP
-import FRP.Event.Class          (fold, sampleOn) as FRP
 import Panda.Bootstrap.Property as Property
 import Panda.Internal.Types     as Types
 
@@ -38,31 +37,20 @@ bootstrap document { initial, subscription, update, view } = do
   { element, system: Types.EventSystem system }
       ← render document view
 
-  deltas ← FRP.create
+  stateRef ← Ref.newRef initial.state
 
   let
-    -- The current state of the application.
-    states' ∷ FRP.Event { state ∷ state, update ∷ update }
-    states' = FRP.fold (\delta { state } → delta state) deltas.event initial
-
-    states ∷ FRP.Event { state ∷ state, update ∷ update }
-    states = pure initial <|> states'
-
     events ∷ FRP.Event event
     events = subscription <|> system.events
 
-    loop
-      ∷ event
-      → { state ∷ state, update ∷ update }
-      → { state ∷ state, event  ∷ event  }
-    loop event { state }
-      = { event, state }
+  cancel ← FRP.subscribe events \event → do
+    state ← Ref.readRef stateRef
 
-    prepared ∷ FRP.Event { event ∷ event, state ∷ state }
-    prepared = FRP.sampleOn states (map loop events)
+    { event, state } # update \f → do
+      mostRecentState ← Ref.readRef stateRef
+      system.handleUpdate (f mostRecentState)
 
-  cancelRenderer    ← FRP.subscribe states system.handleUpdate
-  cancelApplication ← FRP.subscribe prepared (update deltas.push)
+  system.handleUpdate initial
 
   pure
     { element
@@ -70,8 +58,7 @@ bootstrap document { initial, subscription, update, view } = do
         $ system
             { cancel = do
                 system.cancel
-                cancelRenderer
-                cancelApplication
+                cancel
             }
     }
 

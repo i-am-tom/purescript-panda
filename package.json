@@ -1,6 +1,5 @@
 {
   "name": "purescript-panda",
-  "version": "0.10.2",
   "description": "Black-and-white rendering.",
   "dependencies": {
     "pscid": "^2.0.2",
@@ -8,6 +7,7 @@
     "purescript": "^0.11.7"
   },
   "scripts": {
+    "pscid": "pscid",
     "tags": "purs docs --format ctags './**/*.purs' > tags"
   }
 }
