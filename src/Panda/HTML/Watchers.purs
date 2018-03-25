@@ -6,12 +6,15 @@ module Panda.HTML.Watchers
 
   , sort
   , sortBy
+  , sortWith
   ) where
 
-import Data.Algebra.Array    as Algebra
-import Data.Array            as Array
-import Data.Maybe            (Maybe(..))
-import Panda.Internal.Types  as Types
+import Data.Algebra.Array   as Algebra
+import Data.Array           as Array
+import Data.Function        (on)
+import Data.Maybe           (Maybe(..), fromJust)
+import Panda.Internal.Types as Types
+import Partial.Unsafe       (unsafePartial)
 
 import Prelude
 
@@ -130,6 +133,28 @@ filter predicate focus
     }
 
 sortBy
+  ∷ ∀ eff update state event focus
+  . (focus → focus → Ordering)
+  → Array focus
+  → { state ∷ Array focus
+    , moves ∷ Array (Types.ComponentUpdate eff update state event)
+    }
+
+sortBy comparison focus
+  = { state: unsafePartial fromJust (Algebra.interpret focus instructions)
+    , moves: instructions
+    }
+  where
+    instructions
+      ∷ ∀ anything
+      . Array (Algebra.Update anything)
+    instructions
+      = Algebra.sortBy comparison focus
+
+    sorted
+      = Algebra.interpret focus instructions
+
+sortWith
   ∷ ∀ eff update state event focus sortableType
   . Ord sortableType
   ⇒ (focus → sortableType)
@@ -138,10 +163,8 @@ sortBy
     , moves ∷ Array (Types.ComponentUpdate eff update state event)
     }
 
-sortBy helper focus
-  = { state: Array.sortWith helper focus
-    , moves: Algebra.sort helper focus
-    }
+sortWith comparison
+  = sortBy (compare `on` comparison)
 
 sort
   ∷ ∀ eff update state event focus
@@ -152,4 +175,4 @@ sort
     }
 
 sort
-  = sortBy id
+  = sortBy compare

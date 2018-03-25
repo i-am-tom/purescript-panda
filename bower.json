@@ -15,7 +15,7 @@
     "purescript-refs": "^3.0.0",
     "purescript-random": "^3.0.0",
     "purescript-psci-support": "^3.0.0",
-    "purescript-data-algebrae": "2.2.1"
+    "purescript-data-algebrae": "3.0.0"
   },
   "devDependencies": {
     "purescript-console": "^3.0.0",

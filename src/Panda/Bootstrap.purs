@@ -6,12 +6,9 @@ module Panda.Bootstrap
 import Control.Alt              ((<|>))
 import Control.Monad.Eff        (Eff)
 import Control.Monad.Eff.Ref    as Ref
-import Control.Monad.Rec.Class  (Step(..), tailRecM)
 import Data.Array               as Array
-import Data.Algebra.Array       as Algebra
 import DOM.Node.Document        (createElement, createTextNode) as DOM
-import DOM.Node.Node            (appendChild, childNodes, insertBefore, removeChild) as DOM
-import DOM.Node.NodeList        (toArray) as DOM
+import DOM.Node.Node            (appendChild) as DOM
 import DOM.Node.Types           (Document, Node, elementToNode, textToNode) as DOM
 import Data.Filterable          (filterMap)
 import Data.Foldable            (foldMap, traverse_)
@@ -19,6 +16,7 @@ import Data.Maybe               (Maybe(..), fromJust)
 import Data.Monoid              (mempty)
 import FRP.Event                (Event, create, subscribe) as FRP
 import Panda.Bootstrap.Property as Property
+import Panda.Incremental.HTML   (execute)
 import Panda.Internal.Types     as Types
 import Partial.Unsafe           (unsafePartial)
 
@@ -48,9 +46,9 @@ bootstrap document { initial, subscription, update, view } = do
   cancel ← FRP.subscribe events \event → do
     state ← Ref.readRef stateRef
 
-    { event, state } # update \f → do
+    { event, state } # update \callback → do
       mostRecentState ← Ref.readRef stateRef
-      let new@{ state } = f mostRecentState
+      let new@{ state } = callback mostRecentState
 
       Ref.writeRef stateRef state
       system.handleUpdate new
@@ -117,7 +115,7 @@ render document
         let node = DOM.elementToNode tag
 
         elementSystem ← case component.children of
-          Types.StaticChildren children → do
+          Types.StaticChildren children →
             children # foldMap \child → do
               { element, system } ← render document child
 
@@ -125,202 +123,54 @@ render document
               pure system
 
           Types.DynamicChildren listener → do
-            { event: output, push: toOutput } ← FRP.create
-            eventSystems                      ← Ref.newRef mempty
+            eventSystems ← Ref.newRef mempty
+            { event: childEvents, push: pushChildEvent } ← FRP.create
 
             pure $ Types.EventSystem
-              { cancel: do
+              { cancel: Ref.readRef eventSystems
+                  >>= foldMap \(Types.EventSystem { cancel }) →
+                        cancel
+
+              , handleUpdate: listener >>> traverse_ \instruction → do
                   systems ← Ref.readRef eventSystems
 
-                  systems # foldMap \(Types.EventSystem { cancel }) →
-                    cancel
+                  { hasNewItem, systems: updatedSystems } ←
+                      execute
+                        { document
+                        , parent: node
+                        , systems
+                        , render
+                        , update: instruction
+                        }
 
-              , handleUpdate: \update →
-                  listener update # tailRecM \instructions →
-                    case (Array.uncons instructions) of
-                      Nothing →
-                        pure (Done unit)
+                  case hasNewItem of
+                    Nothing →
+                      Ref.writeRef eventSystems updatedSystems
 
-                      Just { head, tail } → do
-                        systems ← Ref.readRef eventSystems
+                    Just index → do
+                      let
+                        Types.EventSystem system
+                          = unsafePartial fromJust
+                            $ Array.index updatedSystems index
 
-                        updatedSystems ← execute document node systems head
-                        Ref.writeRef eventSystems updatedSystems
+                      canceller ←
+                        FRP.subscribe
+                          system.events
+                          pushChildEvent
 
-                        pure (Loop tail)
+                      let
+                        updated
+                          = Types.EventSystem
+                          $ system { cancel = system.cancel <> canceller }
 
-              , events: output
+                      Ref.writeRef eventSystems
+                        $ unsafePartial fromJust
+                        $ Array.insertAt index updated updatedSystems
+
+              , events: childEvents
               }
 
         pure
           { element: node
           , system:  elementSystem <> propertySystem
           }
-
--- | Given an element, and a set of update instructions, perform the update and
--- | reconfigure the event systems.
-execute
-  ∷ ∀ eff update state event
-  . DOM.Document
-  → DOM.Node
-  → Array (Types.EventSystem (Types.FX eff) update state event)
-  → Types.ComponentUpdate (Types.FX eff) update state event
-  → Eff (Types.FX eff)
-      ( Array
-          ( Types.EventSystem (Types.FX eff) update state event
-          )
-      )
-
-execute document parent systems update = do
-  children ← DOM.childNodes parent >>= DOM.toArray
-
-  case update of
-      -- Delete an element from the DOM and execute its cancellers.
-      Algebra.DeleteAt index → do
-        let
-          result = { updated: _, element: _, system: _ }
-            <$> Array.deleteAt index systems
-            <*> Array.index children index
-            <*> Array.index systems  index
-
-        case result of
-          Just { updated, element, system: Types.EventSystem system } → do
-            _ ← DOM.removeChild element parent
-            system.cancel
-
-            pure updated
-
-          _ →
-            pure systems
-
-      -- Remove all the children from the DOM node and run all the cancellers.
-      Algebra.Empty → do
-        systems # traverse_ \(Types.EventSystem { cancel }) →
-          cancel
-
-        children # traverse_ \node → do
-          _ ← DOM.removeChild node parent
-          pure unit
-
-        pure []
-
-      -- Insert an element at a given index and initialise its cancellers.
-      Algebra.InsertAt index spec → do
-        { element, system } ← render document spec
-
-        let
-          updated = { systems': _, child: _ }
-            <$> Array.insertAt index system systems
-            <*> Array.index children index
-
-        case updated of
-          Just { systems', child } → do
-            _ ← DOM.insertBefore child element parent
-            pure systems'
-
-          Nothing →
-            pure systems
-
-      -- Move an element from one position to another. To be explicit, this
-      -- takes the element at `from`, and places it _before_ the element at
-      -- `to + 1`. If no element `to + 1` exists, this is an `append`.
-      Algebra.Move from to → do
-        let
-          moveSystem = do
-            system ← Array.index systems from
-
-            tmp ← Array.deleteAt from systems
-            Array.insertAt to system tmp
-
-          moveElement = do
-            element ← Array.index children from
-
-            if to == Array.length children
-              then pure (DOM.appendChild element parent)
-              else do
-                target ← Array.index children to
-                pure (DOM.insertBefore element target parent)
-
-          plan
-            = { systems: _, action: _ }
-                <$> moveSystem
-                <*> moveElement
-
-        case plan of
-          Just result → do
-            _ ← result.action
-            pure result.systems
-
-          Nothing →
-            pure systems
-
-      -- Remove the last child element.
-      Algebra.Pop → do
-        let
-          result = { elements: _, eventSystems: _ }
-            <$> Array.unsnoc children
-            <*> Array.unsnoc systems
-
-        case result of
-          Just { elements, eventSystems } → do
-            let
-              Types.EventSystem system
-                = eventSystems.last
-
-            system.cancel
-            _ ← DOM.removeChild elements.last parent
-
-            pure eventSystems.init
-
-          Nothing →
-            pure systems
-
-      -- Add a child element to the end of the children.
-      Algebra.Push spec → do
-        { element, system } ← render document spec
-
-        _ ← DOM.appendChild element parent
-        pure (Array.snoc systems system)
-
-      -- Remove the first child.
-      Algebra.Shift → do
-        let
-          result = { elements: _, eventSystems: _ }
-            <$> Array.uncons children
-            <*> Array.uncons systems
-
-        case result of
-          Just { elements, eventSystems } → do
-            let
-              Types.EventSystem system
-                = eventSystems.head
-
-            system.cancel
-            _ ← DOM.removeChild elements.head parent
-
-            pure eventSystems.tail
-
-          Nothing →
-            pure systems
-
-      -- Prepend a child to the list.
-      Algebra.Unshift spec → do
-        let
-          command
-            = case Array.uncons children of
-                Nothing       → DOM.appendChild
-                Just { head } → (_ `DOM.insertBefore` head)
-
-        { element, system } ← render document spec
-        _ ← command element parent
-
-        pure (Array.cons system systems)
-
-      Algebra.Swap this that → do
-        tmp ← execute document parent systems
-          $ Algebra.Move this that
-
-        execute document parent tmp
-          if this < that
-            then Algebra.Move that this
-            else Algebra.Move that this
