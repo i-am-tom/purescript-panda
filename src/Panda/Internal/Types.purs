@@ -6,41 +6,17 @@ import Control.Monad.Eff.Ref (REF)
 import Control.Plus          (empty)
 import DOM                   (DOM)
 import DOM.Event.Types       (Event) as DOM
+import Data.Algebra.Array    as Algebra.Array
+import Data.Algebra.Map      as Algebra.Map
 import Data.Maybe            (Maybe)
 import Data.Monoid           (class Monoid, mempty)
 import FRP                   (FRP)
 import FRP.Event             (Event) as FRP
 import Unsafe.Coerce         (unsafeCoerce)
 
-import Prelude ((<>), (*>), class Semigroup, Unit)
+import Prelude
 
--- | An algebra for array updates. We use this to describe the ways in which we
--- | would like to update the DOM.
-data ArrayUpdate value
-  = ArrayDeleteAt Int
-  | ArrayEmpty
-  | ArrayInsertAt Int value
-  | ArrayMove Int Int
-  | ArrayPop
-  | ArrayPush value
-  | ArrayShift
-  | ArrayUnshift value
-
--- | Components are updated using the array algebra, but specialised to
--- | component values.
-newtype ComponentUpdate eff update state event
-  = ComponentUpdate (ArrayUpdate (Component eff update state event))
-
--- | An algebra for map updates.
-data MapUpdate value
-  = MapInsert String value
-  | MapDelete String
-
--- | Properties are updated using the map algebra specialised to strings.
-newtype PropertyUpdate
-  = PropertyUpdate (MapUpdate String)
-
--- | The effects that are used within Panda.
+-- | The effects that are used within Panda's execution cycle.
 type FX eff
   = ( dom ∷ DOM
     , frp ∷ FRP
@@ -48,7 +24,7 @@ type FX eff
     | eff
     )
 
--- | All the possible event producers.
+-- | All the possible event producers within the Panda DSL.
 data Producer
   = OnAbort
   | OnBlur
@@ -87,6 +63,9 @@ data Producer
   | OnSubmit
   | OnTransitionEnd
 
+type PropertyUpdate
+  = Algebra.Map.Update String String
+
 -- | Properties are either static key/value pairs, listeners for DOM updates
 -- | (that can then change the properties on an element), or producers of
 -- | events (that then bubble up to the `update` function).
@@ -108,6 +87,9 @@ data Property update state event
       { key     ∷ Producer
       , onEvent ∷ DOM.Event → Maybe event
       }
+
+type ComponentUpdate eff update state event
+  = Algebra.Array.Update (Component eff update state event)
 
 -- | Children on elements can either be static (not looking for events), or
 -- | dynamic. Note that the children of static children can be dynamic!

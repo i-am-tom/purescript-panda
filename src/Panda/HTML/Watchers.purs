@@ -1,13 +1,30 @@
 module Panda.HTML.Watchers
   ( renderAlways
   , renderAlways'
-  , renderMaybe
+  , renderOnlyWhen
+  , renderWhen
+
+  , sort
+  , sortBy
   ) where
 
-import Data.Maybe           (Maybe(..))
-import Panda.Internal.Types as Types
+import Data.Algebra.Array    as Algebra
+import Data.Array            as Array
+import Data.Maybe            (Maybe(..))
+import Panda.Internal.Types  as Types
 
-import Prelude ((<<<), ($))
+import Prelude
+
+{-
+
+BASIC COMBINATORS
+
+These are functions to simplify Watcher code for the case where only a single
+child is used and totally re-rendered under all applicable conditions. These
+are enough to give you parity with React-like frameworks, but are much less fun
+than the greater possibilities :)
+
+-}
 
 -- | Create the update algebra for a given single child. All it really does is
 -- | clear the children, and then append the given child. A long-winded
@@ -18,8 +35,8 @@ render'
   → Array (Types.ComponentUpdate eff update state event)
 
 render' component
-  = [ Types.ComponentUpdate $ Types.ArrayEmpty
-    , Types.ComponentUpdate $ Types.ArrayPush component
+  = [ Algebra.Empty
+    , Algebra.Push component
     ]
 
 -- | Regardless of the update, re-render this child. **NB** that this is
@@ -51,15 +68,15 @@ renderAlways' renderer
 -- | Given an update and state, maybe produce a value. If a value _is_
 -- | produced, use this value to render a component. As with the other render
 -- | methods, this will trigger a full re-render.
-renderMaybe
-  ∷ forall eff update state event value
+renderWhen
+  ∷ ∀ eff update state event value
   . ( { update ∷ update, state ∷ state }
     → Maybe value
     )
   → (value → Types.Component eff update state event)
   → Types.Children eff update state event
 
-renderMaybe predicate renderer
+renderWhen predicate renderer
   = Types.DynamicChildren \update →
       case predicate update of
         Just details →
@@ -68,3 +85,71 @@ renderMaybe predicate renderer
         Nothing →
           []
 
+-- | Like `renderWhen`, but a `Nothing` value will remove the child from the
+-- | DOM, rather than simply not updating it.
+renderOnlyWhen
+  ∷ ∀ eff update state event value
+  . ( { update ∷ update, state ∷ state }
+    → Maybe value
+    )
+  → (value → Types.Component eff update state event)
+  → Types.Children eff update state event
+
+renderOnlyWhen predicate renderer
+  = Types.DynamicChildren \update →
+      case predicate update of
+        Just details →
+          render' (renderer details)
+
+        Nothing →
+          [ Algebra.Empty
+          ]
+
+{-
+
+DSL HELPERS
+
+These functions generate sets of DSL instructions to perform common tasks.
+Typically, these should be used within the `update` function to generate both
+the updated state _and_ the view instructions, which can then be passed back to
+the DOM via an update.
+
+-}
+
+filter
+  ∷ ∀ eff update state event focus
+  . (focus → Boolean)
+  → Array focus
+  → { state ∷ Array focus
+    , moves ∷ Array (Types.ComponentUpdate eff update state event)
+    }
+
+filter predicate focus
+  = { state: Array.filter predicate focus
+    , moves: Algebra.filter predicate focus
+    }
+
+sortBy
+  ∷ ∀ eff update state event focus sortableType
+  . Ord sortableType
+  ⇒ (focus → sortableType)
+  → Array focus
+  → { state ∷ Array focus
+    , moves ∷ Array (Types.ComponentUpdate eff update state event)
+    }
+
+sortBy helper focus
+  = { state: Array.sortWith helper focus
+    , moves: Algebra.sort helper focus
+    }
+
+sort
+  ∷ ∀ eff update state event focus
+  . Ord focus
+  ⇒ Array focus
+  → { state ∷ Array focus
+    , moves ∷ Array (Types.ComponentUpdate eff update state event)
+    }
+
+sort
+  = sortBy id

@@ -7,10 +7,12 @@ import Control.Plus              (empty)
 import DOM.Event.EventTarget     (addEventListener, eventListener, removeEventListener, EventListener) as DOM
 import DOM.Event.Types           (Event, EventType) as DOM
 import DOM.HTML.Event.EventTypes as DOM.Events
-import DOM.Node.Element          (removeAttribute, setAttribute) as DOM
+import DOM.Node.Element          (getAttribute, removeAttribute, setAttribute) as DOM
 import DOM.Node.Types            (Element, elementToEventTarget) as DOM
+import Data.Algebra.Map          as Algebra
 import Data.Filterable           (filtered)
 import Data.Foldable             (for_)
+import Data.Maybe                (Maybe(..))
 import Data.Monoid               (mempty)
 import FRP.Event                 (Event, create) as FRP
 import Panda.Internal.Types      as Types
@@ -154,13 +156,40 @@ render element
               { cancel: mempty
               , events: empty
               , handleUpdate: \update → do
-                  for_ (listener update) \(Types.PropertyUpdate instruction) →
+                  for_ (listener update) \instruction →
                     case instruction of
-                      Types.MapInsert key value →
+                      Algebra.Add key value →
                         DOM.setAttribute key value element
 
-                      Types.MapDelete key →
+                      Algebra.Delete key →
                         DOM.removeAttribute key element
+
+                      Algebra.Empty →
+                        pure unit
+
+                      Algebra.Rename from to → do
+                        value ← DOM.getAttribute from element
+
+                        case value of
+                          Nothing →
+                            pure unit
+
+                          Just present → do
+                            DOM.setAttribute to present element
+                            DOM.removeAttribute from element
+
+                      Algebra.Swap this that → do
+                        this' ← DOM.getAttribute this element
+                        that' ← DOM.getAttribute that element
+
+                        case this', that' of
+                          Just thisValue, Just thatValue → do
+                            DOM.setAttribute this thatValue element
+                            DOM.setAttribute that thisValue element
+
+                          _, _ →
+                            pure unit
+
               }
           )
 

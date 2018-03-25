@@ -7,18 +7,20 @@ import Control.Alt              ((<|>))
 import Control.Monad.Eff        (Eff)
 import Control.Monad.Eff.Ref    as Ref
 import Control.Monad.Rec.Class  (Step(..), tailRecM)
-import Data.Array               (cons, deleteAt, index, insertAt, length, snoc, uncons, unsnoc) as Array
+import Data.Array               as Array
+import Data.Algebra.Array       as Algebra
 import DOM.Node.Document        (createElement, createTextNode) as DOM
 import DOM.Node.Node            (appendChild, childNodes, insertBefore, removeChild) as DOM
 import DOM.Node.NodeList        (toArray) as DOM
 import DOM.Node.Types           (Document, Node, elementToNode, textToNode) as DOM
 import Data.Filterable          (filterMap)
 import Data.Foldable            (foldMap, traverse_)
-import Data.Maybe               (Maybe(..))
+import Data.Maybe               (Maybe(..), fromJust)
 import Data.Monoid              (mempty)
 import FRP.Event                (Event, create, subscribe) as FRP
 import Panda.Bootstrap.Property as Property
 import Panda.Internal.Types     as Types
+import Partial.Unsafe           (unsafePartial)
 
 import Prelude
 
@@ -48,7 +50,10 @@ bootstrap document { initial, subscription, update, view } = do
 
     { event, state } # update \f → do
       mostRecentState ← Ref.readRef stateRef
-      system.handleUpdate (f mostRecentState)
+      let new@{ state } = f mostRecentState
+
+      Ref.writeRef stateRef state
+      system.handleUpdate new
 
   system.handleUpdate initial
 
@@ -166,11 +171,12 @@ execute
           )
       )
 
-execute document parent systems (Types.ComponentUpdate update) = do
+execute document parent systems update = do
   children ← DOM.childNodes parent >>= DOM.toArray
 
   case update of
-      Types.ArrayDeleteAt index → do
+      -- Delete an element from the DOM and execute its cancellers.
+      Algebra.DeleteAt index → do
         let
           result = { updated: _, element: _, system: _ }
             <$> Array.deleteAt index systems
@@ -187,7 +193,8 @@ execute document parent systems (Types.ComponentUpdate update) = do
           _ →
             pure systems
 
-      Types.ArrayEmpty → do
+      -- Remove all the children from the DOM node and run all the cancellers.
+      Algebra.Empty → do
         systems # traverse_ \(Types.EventSystem { cancel }) →
           cancel
 
@@ -197,7 +204,8 @@ execute document parent systems (Types.ComponentUpdate update) = do
 
         pure []
 
-      Types.ArrayInsertAt index spec → do
+      -- Insert an element at a given index and initialise its cancellers.
+      Algebra.InsertAt index spec → do
         { element, system } ← render document spec
 
         let
@@ -213,14 +221,16 @@ execute document parent systems (Types.ComponentUpdate update) = do
           Nothing →
             pure systems
 
-      Types.ArrayMove from to → do
+      -- Move an element from one position to another. To be explicit, this
+      -- takes the element at `from`, and places it _before_ the element at
+      -- `to + 1`. If no element `to + 1` exists, this is an `append`.
+      Algebra.Move from to → do
         let
           moveSystem = do
             system ← Array.index systems from
-            let to' = if from < to then to - 1 else to
 
             tmp ← Array.deleteAt from systems
-            Array.insertAt to' system tmp
+            Array.insertAt to system tmp
 
           moveElement = do
             element ← Array.index children from
@@ -244,7 +254,8 @@ execute document parent systems (Types.ComponentUpdate update) = do
           Nothing →
             pure systems
 
-      Types.ArrayPop → do
+      -- Remove the last child element.
+      Algebra.Pop → do
         let
           result = { elements: _, eventSystems: _ }
             <$> Array.unsnoc children
@@ -264,13 +275,15 @@ execute document parent systems (Types.ComponentUpdate update) = do
           Nothing →
             pure systems
 
-      Types.ArrayPush spec → do
+      -- Add a child element to the end of the children.
+      Algebra.Push spec → do
         { element, system } ← render document spec
 
         _ ← DOM.appendChild element parent
         pure (Array.snoc systems system)
 
-      Types.ArrayShift → do
+      -- Remove the first child.
+      Algebra.Shift → do
         let
           result = { elements: _, eventSystems: _ }
             <$> Array.uncons children
@@ -290,7 +303,8 @@ execute document parent systems (Types.ComponentUpdate update) = do
           Nothing →
             pure systems
 
-      Types.ArrayUnshift spec → do
+      -- Prepend a child to the list.
+      Algebra.Unshift spec → do
         let
           command
             = case Array.uncons children of
@@ -301,3 +315,12 @@ execute document parent systems (Types.ComponentUpdate update) = do
         _ ← command element parent
 
         pure (Array.cons system systems)
+
+      Algebra.Swap this that → do
+        tmp ← execute document parent systems
+          $ Algebra.Move this that
+
+        execute document parent tmp
+          if this < that
+            then Algebra.Move that this
+            else Algebra.Move that this
