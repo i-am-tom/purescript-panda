@@ -1,0 +1,47 @@
+body {
+  font-family: sans-serif;
+  text-align: center;
+}
+
+input {
+  border: 1px solid #CCC;
+  border-width: 0 0 1px;
+  font-size: 24px;
+  margin-bottom: 20px;
+  padding: 5px 10px;
+  width: 600px;
+}
+
+table {
+  margin: 10px auto;
+}
+
+thead {
+  font-size: 24px;
+  padding-bottom: 20px;
+  cursor: pointer;
+  text-align: center;
+}
+
+tr {
+  width: 500px;
+}
+
+td {
+  padding: 5px 0;
+  text-align: center;
+}
+
+td:nth-child(1),
+td:nth-child(3) {
+  width: 150px;
+}
+
+td:nth-child(2),
+td:nth-child(4) {
+  width: 100px;
+}
+
+.hidden {
+  display: none;
+}

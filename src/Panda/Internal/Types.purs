@@ -7,7 +7,8 @@ import Control.Plus          (empty)
 import DOM                   (DOM)
 import DOM.Event.Types       (Event) as DOM
 import Data.Algebra.Array    as Algebra.Array
-import Data.Algebra.Map      as Algebra.Map
+import Data.Generic.Rep      (class Generic)
+import Data.Generic.Rep.Show (genericShow)
 import Data.Maybe            (Maybe)
 import Data.Monoid           (class Monoid, mempty)
 import FRP                   (FRP)
@@ -63,30 +64,41 @@ data Producer
   | OnSubmit
   | OnTransitionEnd
 
-type PropertyUpdate
-  = Algebra.Map.Update String String
+derive instance genericProducer ∷ Generic Producer _
+
+instance showProducer ∷ Show Producer where
+  show = genericShow
+
+-- TODO: bring this back in line with Data.Algebra.Map
+data PropertyUpdate event
+  = PropertyAdd (Property event)
+  | PropertyDelete String
 
 -- | Properties are either static key/value pairs, listeners for DOM updates
 -- | (that can then change the properties on an element), or producers of
 -- | events (that then bubble up to the `update` function).
-data Property update state event
-
-  = PropertyStatic
+data Property event
+  = PropertyFixed
       { key   ∷ String
       , value ∷ String
       }
-
-  | PropertyWatcher
-      ( { update ∷ update
-        , state ∷ state
-        }
-      → (Array PropertyUpdate)
-      )
 
   | PropertyProducer
       { key     ∷ Producer
       , onEvent ∷ DOM.Event → Maybe event
       }
+
+-- | When we actually refer to sets of properties, they're either a fixed set
+-- | of static properties, or a dynamic set dependent on some predicate.
+data Properties update state event
+  = StaticProperties (Array (Property event))
+
+  | DynamicProperties
+      ( { update ∷ update
+        , state ∷ state
+        }
+      → Array (PropertyUpdate event)
+      )
 
 type ComponentUpdate eff update state event
   = Algebra.Array.Update (Component eff update state event)
@@ -113,7 +125,7 @@ data Component eff update state event
 
   | ComponentElement
       { children   ∷ Children eff update state event
-      , properties ∷ Array (Property update state event)
+      , properties ∷ Properties update state event
       , tagName    ∷ String
       }
 
@@ -174,6 +186,23 @@ newtype EventSystem eff update state event
           → Eff eff Unit
       }
 
+handleUpdate
+  ∷ ∀ eff update state event
+  . { update ∷ update
+    , state  ∷ state
+    }
+  → EventSystem eff update state event
+  → Eff eff Unit
+handleUpdate update (EventSystem system)
+  = system.handleUpdate update
+
+cancel
+  ∷ ∀ eff update state event
+  . EventSystem eff update state event
+  → Eff eff Unit
+cancel (EventSystem system)
+  = system.cancel
+
 instance semigroupEventSystem
     ∷ Semigroup (EventSystem eff update state event) where
   append (EventSystem this) (EventSystem that)
@@ -195,7 +224,11 @@ instance monoidEventSystem
 -- | Convenience synonym for defining the type of updaters within a Panda
 -- | application.
 type Updater eff update state event
-  = ((state → { update ∷ update, state ∷ state }) → Eff eff Unit)
+  = ( ( state
+      → { update ∷ update, state ∷ state }
+      )
+    → Eff eff Unit
+    )
   → { event ∷ event, state ∷ state }
   → Eff eff Unit
 

@@ -1,20 +1,19 @@
-module Panda.Incremental.HTML where
+module Panda.Incremental.Element where
 
 import Control.Monad.Eff    (Eff)
 import Data.Array           as Array
 import Data.Algebra.Array   as Algebra
 import DOM.Node.Node        (appendChild, childNodes, insertBefore, removeChild) as DOM
 import DOM.Node.NodeList    (toArray) as DOM
-import DOM.Node.Types       (Document, Node) as DOM
-import Data.Foldable        (traverse_)
+import DOM.Node.Types       (Node) as DOM
+import Data.Foldable        (for_)
 import Data.Maybe           (Maybe(..))
 import Panda.Internal.Types as Types
 
 import Prelude
 
 type Renderer eff update state event
-  = DOM.Document
-  → Types.Component eff update state event
+  = Types.Component eff update state event
   → Eff eff
       { element ∷ DOM.Node
       , system  ∷ Types.EventSystem eff update state event
@@ -24,8 +23,7 @@ type Renderer eff update state event
 -- | reconfigure the event systems.
 execute
   ∷ ∀ eff update state event
-  . { document ∷ DOM.Document
-    , parent   ∷ DOM.Node
+  . { parent   ∷ DOM.Node
     , systems  ∷ Array (Types.EventSystem (Types.FX eff) update state event)
     , render   ∷ Renderer (Types.FX eff) update state event
     , update   ∷ Types.ComponentUpdate (Types.FX eff) update state event
@@ -37,7 +35,7 @@ execute
       , hasNewItem ∷ Maybe Int
       }
 
-execute { document, parent, systems, render, update } = do
+execute { parent, systems, render, update } = do
   children ← DOM.childNodes parent >>= DOM.toArray
 
   case update of
@@ -67,10 +65,9 @@ execute { document, parent, systems, render, update } = do
 
       -- Remove all the children from the DOM node and run all the cancellers.
       Algebra.Empty → do
-        systems # traverse_ \(Types.EventSystem { cancel }) →
-          cancel
+        for_ systems Types.cancel
 
-        children # traverse_ \node → do
+        for_ children \node → do
           _ ← DOM.removeChild node parent
           pure unit
 
@@ -82,7 +79,7 @@ execute { document, parent, systems, render, update } = do
       -- Insert an element at a given index and initialise its cancellers.
       Algebra.InsertAt index spec → do
         { element, system }
-            ← render document spec
+            ← render spec
 
         let
           updated = { systems: _, child: _ }
@@ -166,7 +163,7 @@ execute { document, parent, systems, render, update } = do
 
       -- Add a child element to the end of the children.
       Algebra.Push spec → do
-        { element, system } ← render document spec
+        { element, system } ← render spec
 
         _ ← DOM.appendChild element parent
         pure
@@ -209,7 +206,7 @@ execute { document, parent, systems, render, update } = do
                 Nothing       → DOM.appendChild
                 Just { head } → (_ `DOM.insertBefore` head)
 
-        { element, system } ← render document spec
+        { element, system } ← render spec
         _ ← command element parent
 
         pure
@@ -218,18 +215,29 @@ execute { document, parent, systems, render, update } = do
           }
 
       Algebra.Swap this that → do
-        { systems: tmp } ← execute
-          { document
-          , parent
-          , systems
-          , render
-          , update: Algebra.Move this that
-          }
+        case compare this that of
+          GT →
+            execute
+              { parent
+              , systems
+              , render
+              , update: Algebra.Swap that this
+              }
 
-        execute
-          { document
-          , parent
-          , systems: tmp
-          , render
-          , update: Algebra.Move that this
-          }
+          EQ →
+            pure { systems, hasNewItem: Nothing }
+
+          LT → do
+            { systems: tmp } ← execute
+              { parent
+              , systems
+              , render
+              , update: Algebra.Move this that
+              }
+
+            execute
+              { parent
+              , systems: tmp
+              , render
+              , update: Algebra.Move that this
+              }

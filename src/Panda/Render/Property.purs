@@ -1,21 +1,24 @@
-module Panda.Bootstrap.Property
+module Panda.Render.Property
   ( render
   ) where
 
-import Control.Monad.Eff         (Eff)
-import Control.Plus              (empty)
-import DOM.Event.EventTarget     (addEventListener, eventListener, removeEventListener, EventListener) as DOM
-import DOM.Event.Types           (Event, EventType) as DOM
-import DOM.HTML.Event.EventTypes as DOM.Events
-import DOM.Node.Element          (getAttribute, removeAttribute, setAttribute) as DOM
-import DOM.Node.Types            (Element, elementToEventTarget) as DOM
-import Data.Algebra.Map          as Algebra
-import Data.Filterable           (filtered)
-import Data.Foldable             (for_)
-import Data.Maybe                (Maybe(..))
-import Data.Monoid               (mempty)
-import FRP.Event                 (Event, create) as FRP
-import Panda.Internal.Types      as Types
+import Control.Monad.Eff          (Eff)
+import Control.Monad.Eff.Ref      as Ref
+import Control.Plus               (empty)
+import DOM.Event.EventTarget      (addEventListener, eventListener, removeEventListener, EventListener) as DOM
+import DOM.Event.Types            (Event, EventType) as DOM
+import DOM.HTML.Event.EventTypes  as DOM.Events
+import DOM.Node.Element           (setAttribute) as DOM
+import DOM.Node.Types             (Element, elementToEventTarget) as DOM
+import Data.Filterable            (filtered)
+import Data.Foldable              (foldMap, for_, traverse_)
+import Data.Map                   as Map
+import Data.Maybe                 (Maybe(..), fromJust)
+import Data.Monoid                (mempty)
+import FRP.Event                  (Event, create, subscribe) as FRP
+import Panda.Incremental.Property (execute)
+import Panda.Internal.Types       as Types
+import Partial.Unsafe             (unsafePartial)
 
 import Prelude
 
@@ -131,15 +134,15 @@ attach { key, onEvent } element = do
 
 -- | Render a Property on a DOM element. This also initialises any `Watcher`
 -- | components, and sets up their event handlers and cancellers.
-render
+render'
   ∷ ∀ eff update state event
   . DOM.Element
-  → Types.Property update state event
+  → Types.Property event
   → Eff (Types.FX eff) (Types.EventSystem (Types.FX eff) update state event)
 
-render element
+render' element
   = case _ of
-      Types.PropertyStatic { key, value } → do
+      Types.PropertyFixed { key, value } → do
         DOM.setAttribute key value element
 
         pure
@@ -147,49 +150,6 @@ render element
               { cancel: mempty
               , events: empty
               , handleUpdate: mempty
-              }
-          )
-
-      Types.PropertyWatcher listener → do
-        pure
-          ( Types.EventSystem
-              { cancel: mempty
-              , events: empty
-              , handleUpdate: \update → do
-                  for_ (listener update) \instruction →
-                    case instruction of
-                      Algebra.Add key value →
-                        DOM.setAttribute key value element
-
-                      Algebra.Delete key →
-                        DOM.removeAttribute key element
-
-                      Algebra.Empty →
-                        pure unit
-
-                      Algebra.Rename from to → do
-                        value ← DOM.getAttribute from element
-
-                        case value of
-                          Nothing →
-                            pure unit
-
-                          Just present → do
-                            DOM.setAttribute to present element
-                            DOM.removeAttribute from element
-
-                      Algebra.Swap this that → do
-                        this' ← DOM.getAttribute this element
-                        that' ← DOM.getAttribute that element
-
-                        case this', that' of
-                          Just thisValue, Just thatValue → do
-                            DOM.setAttribute this thatValue element
-                            DOM.setAttribute that thisValue element
-
-                          _, _ →
-                            pure unit
-
               }
           )
 
@@ -208,3 +168,64 @@ render element
               , handleUpdate: \_ → pure unit
               }
           )
+
+render
+  ∷ ∀ eff update state event
+  . DOM.Element
+  → Types.Properties update state event
+  → Eff (Types.FX eff) (Types.EventSystem (Types.FX eff) update state event)
+render element
+  = case _ of
+      Types.StaticProperties properties →
+        foldMap (render' element) properties
+
+      Types.DynamicProperties listener → do
+        eventSystems                               ← Ref.newRef Map.empty
+        { event: events, push: pushPropertyEvent } ← FRP.create
+
+        pure
+          ( Types.EventSystem
+              { cancel: do
+                  systems ← Ref.readRef eventSystems
+                  for_ systems Types.cancel
+
+              , events
+
+              , handleUpdate: listener >>> traverse_ \instruction → do
+                  systems ← Ref.readRef eventSystems
+
+                  { hasNewItem, systems: updatedSystems } ←
+                      execute
+                        { element
+                        , systems
+                        , render: render' element
+                        , update: instruction
+                        }
+
+                  case hasNewItem of
+                    Nothing →
+                      Ref.writeRef
+                        eventSystems
+                        updatedSystems
+
+                    Just index → do
+                      let
+                        Types.EventSystem system
+                          = unsafePartial fromJust
+                          $ Map.lookup index updatedSystems
+
+                      canceller ←
+                        FRP.subscribe
+                          system.events
+                          pushPropertyEvent
+
+                      let
+                        updated
+                          = Types.EventSystem
+                          $ system { cancel = system.cancel <> canceller }
+
+                      Ref.writeRef eventSystems
+                        $ Map.insert index updated updatedSystems
+              }
+          )
+

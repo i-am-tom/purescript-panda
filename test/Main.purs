@@ -9,15 +9,10 @@ import Panda as P
 
 import Test.Example.DataTable as DataTable
 
-type FX eff
-  = ( random :: RANDOM
-    | P.FX eff
-    )
-
-examples :: forall eff. Array (Eff (FX eff) Unit)
+examples :: forall eff. Array (Eff _ Unit)
 examples
   = [ DataTable.main
     ]
 
-main ∷ forall eff. Eff (FX eff) Unit
+main ∷ Eff _ Unit
 main = sequence_ examples
