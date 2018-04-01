@@ -27,30 +27,23 @@ type FX eff
 
 -- | All the possible event producers within the Panda DSL.
 data Producer
-  = OnAbort
-  | OnBlur
+  = OnBlur
   | OnChange
-  | OnContextMenu
   | OnClick
   | OnDoubleClick
   | OnDrag
   | OnDragEnd
   | OnDragEnter
-  | OnDragExit
   | OnDragLeave
   | OnDragOver
   | OnDragStart
   | OnDrop
   | OnError
   | OnFocus
-  | OnFocusIn
-  | OnFocusOut
   | OnInput
-  | OnInvalid
   | OnKeyDown
   | OnKeyPress
   | OnKeyUp
-  | OnLoad
   | OnMouseDown
   | OnMouseEnter
   | OnMouseLeave
@@ -58,9 +51,7 @@ data Producer
   | OnMouseOver
   | OnMouseOut
   | OnMouseUp
-  | OnReset
   | OnScroll
-  | OnSelect
   | OnSubmit
   | OnTransitionEnd
 

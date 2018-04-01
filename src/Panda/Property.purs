@@ -2,223 +2,423 @@ module Panda.Property
   ( module Panda.Property
   , module Watchers
   , module ExportedTypes
+
+  , onBlur
+  , onBlur_
+  , onChange
+  , onChange_
+  , onChange'
+  , onClick
+  , onClick_
+  , onDoubleClick
+  , onDoubleClick_
+  , onDrag
+  , onDrag_
+  , onDragEnd
+  , onDragEnd_
+  , onDragEnter
+  , onDragEnter_
+  , onDragLeave
+  , onDragLeave_
+  , onDragOver
+  , onDragOver_
+  , onDragStart
+  , onDragStart_
+  , onDrop
+  , onDrop_
+  , onError
+  , onError_
+  , onFocus
+  , onFocus_
+  , onInput
+  , onInput_
+  , onInput'
+  , onKeyDown
+  , onKeyDown_
+  , onKeyDown'
+  , onKeyPress
+  , onKeyPress_
+  , onKeyPress'
+  , onKeyUp
+  , onKeyUp_
+  , onKeyUp'
+  , onMouseDown
+  , onMouseDown_
+  , onMouseEnter
+  , onMouseEnter_
+  , onMouseLeave
+  , onMouseLeave_
+  , onMouseMove
+  , onMouseMove_
+  , onMouseOver
+  , onMouseOver_
+  , onMouseOut
+  , onMouseOut_
+  , onMouseUp
+  , onMouseUp_
+  , onScroll
+  , onScroll_
+  , onSubmit
+  , onSubmit_
+  , onTransitionEnd
+  , onTransitionEnd_
+
+  , accept
+  , action
+  , align
+  , alt
+  , async
+  , autocomplete
+  , autofocus
+  , autoplay
+  , bgcolor
+  , border
+  , buffered
+  , challenge
+  , charset
+  , checked
+  , cite
+  , className
+  , code
+  , codebase
+  , color
+  , cols
+  , colspan
+  , content
+  , contextmenu
+  , controls
+  , coords
+  , crossorigin
+  , data_
+  , datetime
+  , default
+  , defer
+  , dirname
+  , disabled
+  , download
+  , enctype
+  , for
+  , form
+  , formaction
+  , headers
+  , height
+  , high
+  , href
+  , hreflang
+  , http
+  , icon
+  , integrity
+  , ismap
+  , keytype
+  , kind
+  , label
+  , language
+  , list
+  , loop
+  , low
+  , manifest
+  , max
+  , maxlength
+  , minlength
+  , media
+  , method
+  , min
+  , multiple
+  , muted
+  , name
+  , novalidate
+  , open
+  , optimum
+  , pattern
+  , ping
+  , placeholder
+  , poster
+  , preload
+  , radiogroup
+  , readonly
+  , rel
+  , required
+  , reversed
+  , rows
+  , rowspan
+  , sandbox
+  , scope
+  , scoped
+  , seamless
+  , selected
+  , shape
+  , size
+  , sizes
+  , span
+  , src
+  , srcdoc
+  , srclang
+  , srcset
+  , start
+  , step
+  , summary
+  , target
+  , type_
+  , usemap
+  , value
+  , width
   ) where
 
-import Control.Monad.Except    (runExcept)
-import DOM.Event.Types         (Event, FocusEvent, InputEvent, KeyboardEvent, MouseEvent, TouchEvent, WheelEvent) as DOM
-import DOM.HTML.Event.Types    (DragEvent, ErrorEvent) as DOM
-import Data.Either             (either)
-import Data.Foreign            (readString, toForeign) as F
-import Data.Foreign.Index      (readProp) as F
-import Data.Maybe              (Maybe(..))
-import Panda.Internal.Types    as Types
-import Panda.Internal.Types    (Properties(..), Property(..), PropertyUpdate(..)) as ExportedTypes
+import Control.Monad.Except (runExcept)
+import DOM.Event.Types (Event, FocusEvent, KeyboardEvent, MouseEvent) as DOM
+import DOM.HTML.Event.Types (DragEvent, ErrorEvent) as DOM
+import Data.Either (either)
+import Data.Foreign (readInt, readString, toForeign) as F
+import Data.Foreign.Index (readProp) as F
+import Data.Maybe (Maybe(..))
+import Panda.Internal.Types as Types
+import Panda.Internal.Types (Properties(..), Property(..), PropertyUpdate(..)) as ExportedTypes
 import Panda.Property.Watchers as Watchers
-import Unsafe.Coerce           (unsafeCoerce)
+import Unsafe.Coerce (unsafeCoerce)
 
 import Prelude
 
--- | Event conversions
+-- | Given an event, get the value of the target element using the foreign
+-- | interface.
+targetValue
+  ∷ ∀ output
+  . (String → Maybe output)
+  → DOM.Event
+  → Maybe output
 
-eventToDragEvent ∷ DOM.Event → DOM.DragEvent
-eventToDragEvent = unsafeCoerce
+targetValue handler ev
+  = either (\_ → Nothing) handler (runExcept result)
+  where
+    result
+        = F.readProp "target" (F.toForeign ev)
+      >>= F.readProp "value"
+      >>= F.readString
 
-eventToErrorEvent ∷ DOM.Event → DOM.ErrorEvent
-eventToErrorEvent = unsafeCoerce
+-- | Given a keyboard event, get the keycode of the relevant key using the
+-- | foreign interface.
+keyCode
+  ∷ ∀ event
+  . (Int → Maybe event)
+  → DOM.Event
+  → Maybe event
 
-eventToFocusEvent ∷ DOM.Event → DOM.FocusEvent
-eventToFocusEvent = unsafeCoerce
+keyCode handler ev
+  = either (\_ → Nothing) handler (runExcept result)
+  where
+    result
+        = F.readProp "keyCode" (F.toForeign ev)
+      >>= F.readInt
 
-eventToInputEvent ∷ DOM.Event → DOM.InputEvent
-eventToInputEvent = unsafeCoerce
-
-eventToKeyboardEvent ∷ DOM.Event → DOM.KeyboardEvent
-eventToKeyboardEvent = unsafeCoerce
-
-eventToMouseEvent ∷ DOM.Event → DOM.MouseEvent
-eventToMouseEvent = unsafeCoerce
-
-eventToTouchEvent ∷ DOM.Event → DOM.TouchEvent
-eventToTouchEvent = unsafeCoerce
-
-eventToWheelEvent ∷ DOM.Event → DOM.WheelEvent
-eventToWheelEvent = unsafeCoerce
-
--- | Event producers
 type Producer input
   = ∀ event
   . (input → Maybe event)
   → Types.Property event
 
--- | Make a producer with the given handler.
-makeProducer'
-  ∷ ∀ event
-  . Types.Producer
-  → (DOM.Event → Maybe event)
-  → Types.Property event
-makeProducer' key onEvent
-  = Types.PropertyProducer
-      { key
-      , onEvent
-      }
-
--- | Specifically build a producer of a given input type.
 makeProducer
   ∷ ∀ input
   . Types.Producer
-  → (DOM.Event → input)
   → Producer input
-makeProducer key conversion onEvent
-  = makeProducer' key \ev →
-      onEvent (conversion ev)
 
--- | Get the value of the target DOM element.
-targetValue
-  ∷ ∀ event
-  . (String → Maybe event)
-  → DOM.Event
-  → Maybe event
-targetValue handler ev
-  = either (\_ → Nothing) handler
-      ( runExcept do
-          let ev' = F.toForeign ev
+makeProducer key onEvent
+  = Types.PropertyProducer
+      { key
+      , onEvent: onEvent <<< unsafeCoerce
+      }
 
-          targetProp ← F.readProp "target" ev'
-          valueProp  ← F.readProp "value" targetProp
+type Producer_ input
+  = ∀ event
+  . (input → event)
+  → Types.Property event
 
-          F.readString valueProp
-      )
+makeProducer_
+  ∷ ∀ input
+  . Types.Producer
+  → Producer_ input
 
-onAbort ∷ Producer DOM.Event
-onAbort = makeProducer Types.OnAbort id
+makeProducer_ key onEvent
+  = makeProducer key (Just <<< onEvent)
 
 onBlur ∷ Producer DOM.FocusEvent
-onBlur = makeProducer Types.OnBlur eventToFocusEvent
+onBlur = makeProducer Types.OnBlur
 
-onChange ∷ Producer String
-onChange handler = makeProducer' Types.OnChange (targetValue handler)
+onBlur_ ∷ Producer_ DOM.FocusEvent
+onBlur_ = makeProducer_ Types.OnBlur
 
-onChange' ∷ Producer DOM.Event
-onChange' = makeProducer Types.OnChange id
+onChange ∷ Producer DOM.Event
+onChange = makeProducer Types.OnChange
+
+onChange' ∷ Producer String
+onChange' = makeProducer Types.OnChange <<< targetValue
+
+onChange_ ∷ Producer_ String
+onChange_ = makeProducer_ Types.OnChange
 
 onClick ∷ Producer DOM.MouseEvent
-onClick = makeProducer Types.OnClick eventToMouseEvent
+onClick = makeProducer Types.OnClick
 
-onContextMenu ∷ Producer DOM.MouseEvent
-onContextMenu = makeProducer Types.OnContextMenu eventToMouseEvent
+onClick_ ∷ Producer_ DOM.MouseEvent
+onClick_ = makeProducer_ Types.OnClick
 
 onDoubleClick ∷ Producer DOM.MouseEvent
-onDoubleClick = makeProducer Types.OnDoubleClick eventToMouseEvent
+onDoubleClick = makeProducer Types.OnDoubleClick
+
+onDoubleClick_ ∷ Producer_ DOM.MouseEvent
+onDoubleClick_ = makeProducer_ Types.OnDoubleClick
 
 onDrag ∷ Producer DOM.DragEvent
-onDrag = makeProducer Types.OnDrag eventToDragEvent
+onDrag = makeProducer Types.OnDrag
+
+onDrag_ ∷ Producer_ DOM.DragEvent
+onDrag_ = makeProducer_ Types.OnDrag
 
 onDragEnd ∷ Producer DOM.DragEvent
-onDragEnd = makeProducer Types.OnDragEnd eventToDragEvent
+onDragEnd = makeProducer Types.OnDragEnd
+
+onDragEnd_ ∷ Producer_ DOM.DragEvent
+onDragEnd_ = makeProducer_ Types.OnDragEnd
 
 onDragEnter ∷ Producer DOM.DragEvent
-onDragEnter = makeProducer Types.OnDragEnter eventToDragEvent
+onDragEnter = makeProducer Types.OnDragEnter
 
-onDragExit ∷ Producer DOM.DragEvent
-onDragExit = makeProducer Types.OnDragExit eventToDragEvent
+onDragEnter_ ∷ Producer_ DOM.DragEvent
+onDragEnter_ = makeProducer_ Types.OnDragEnter
 
 onDragLeave ∷ Producer DOM.DragEvent
-onDragLeave = makeProducer Types.OnDragLeave eventToDragEvent
+onDragLeave = makeProducer Types.OnDragLeave
+
+onDragLeave_ ∷ Producer_ DOM.DragEvent
+onDragLeave_ = makeProducer_ Types.OnDragLeave
 
 onDragOver ∷ Producer DOM.DragEvent
-onDragOver = makeProducer Types.OnDragOver eventToDragEvent
+onDragOver = makeProducer Types.OnDragLeave
+
+onDragOver_ ∷ Producer_ DOM.DragEvent
+onDragOver_ = makeProducer_ Types.OnDragLeave
 
 onDragStart ∷ Producer DOM.DragEvent
-onDragStart = makeProducer Types.OnDragStart eventToDragEvent
+onDragStart = makeProducer Types.OnDragStart
+
+onDragStart_ ∷ Producer_ DOM.DragEvent
+onDragStart_ = makeProducer_ Types.OnDragStart
 
 onDrop ∷ Producer DOM.DragEvent
-onDrop = makeProducer Types.OnDrop eventToDragEvent
+onDrop = makeProducer Types.OnDrop
+
+onDrop_ ∷ Producer_ DOM.DragEvent
+onDrop_ = makeProducer_ Types.OnDrop
 
 onError ∷ Producer DOM.ErrorEvent
-onError = makeProducer Types.OnError eventToErrorEvent
+onError = makeProducer Types.OnError
+
+onError_ ∷ Producer_ DOM.ErrorEvent
+onError_ = makeProducer_ Types.OnError
 
 onFocus ∷ Producer DOM.FocusEvent
-onFocus = makeProducer Types.OnFocus eventToFocusEvent
+onFocus = makeProducer Types.OnFocus
 
-onFocusIn ∷ Producer DOM.FocusEvent
-onFocusIn = makeProducer Types.OnFocusIn eventToFocusEvent
+onFocus_ ∷ Producer_ DOM.FocusEvent
+onFocus_ = makeProducer_ Types.OnFocus
 
-onFocusOut ∷ Producer DOM.FocusEvent
-onFocusOut = makeProducer Types.OnFocusOut eventToFocusEvent
+onInput ∷ Producer DOM.Event
+onInput = makeProducer Types.OnFocus
 
-onInput ∷ Producer String
-onInput handler = makeProducer' Types.OnInput (targetValue handler)
+onInput_ ∷ Producer_ DOM.Event
+onInput_ = makeProducer_ Types.OnFocus
 
-onInput' ∷ Producer DOM.Event
-onInput' = makeProducer Types.OnInput id
+onInput' ∷ Producer String
+onInput' = makeProducer Types.OnFocus <<< targetValue
 
-onInvalid ∷ Producer DOM.Event
-onInvalid = makeProducer Types.OnInvalid id
+onKeyDown ∷ Producer DOM.KeyboardEvent
+onKeyDown = makeProducer Types.OnKeyDown
 
-onKeyDown ∷ Producer String
-onKeyDown handler = makeProducer' Types.OnKeyDown (targetValue handler)
+onKeyDown_ ∷ Producer_ DOM.KeyboardEvent
+onKeyDown_ = makeProducer_ Types.OnKeyDown
 
-onKeyDown' ∷ Producer DOM.KeyboardEvent
-onKeyDown' = makeProducer Types.OnKeyDown eventToKeyboardEvent
+onKeyDown' ∷ Producer Int
+onKeyDown' = makeProducer Types.OnKeyDown <<< keyCode
 
-onKeyPress ∷ Producer String
-onKeyPress handler = makeProducer' Types.OnKeyPress (targetValue handler)
+onKeyPress ∷ Producer DOM.KeyboardEvent
+onKeyPress = makeProducer Types.OnKeyPress
 
-onKeyPress' ∷ Producer DOM.KeyboardEvent
-onKeyPress' = makeProducer Types.OnKeyPress eventToKeyboardEvent
+onKeyPress_ ∷ Producer_ DOM.KeyboardEvent
+onKeyPress_ = makeProducer_ Types.OnKeyPress
 
-onKeyUp ∷ Producer String
-onKeyUp handler = makeProducer' Types.OnKeyUp (targetValue handler)
+onKeyPress' ∷ Producer Int
+onKeyPress' = makeProducer Types.OnKeyPress <<< keyCode
 
-onKeyUp' ∷ Producer DOM.KeyboardEvent
-onKeyUp' = makeProducer Types.OnKeyUp eventToKeyboardEvent
+onKeyUp ∷ Producer DOM.KeyboardEvent
+onKeyUp = makeProducer Types.OnKeyUp
 
-onLoad ∷ Producer DOM.Event
-onLoad = makeProducer Types.OnLoad id
+onKeyUp_ ∷ Producer_ DOM.KeyboardEvent
+onKeyUp_ = makeProducer_ Types.OnKeyUp
+
+onKeyUp' ∷ Producer Int
+onKeyUp' = makeProducer Types.OnKeyUp <<< keyCode
 
 onMouseDown ∷ Producer DOM.MouseEvent
-onMouseDown = makeProducer Types.OnMouseDown eventToMouseEvent
+onMouseDown = makeProducer Types.OnMouseDown
+
+onMouseDown_ ∷ Producer_ DOM.MouseEvent
+onMouseDown_ = makeProducer_ Types.OnMouseDown
 
 onMouseEnter ∷ Producer DOM.MouseEvent
-onMouseEnter = makeProducer Types.OnMouseEnter eventToMouseEvent
+onMouseEnter = makeProducer Types.OnMouseEnter
+
+onMouseEnter_ ∷ Producer_ DOM.MouseEvent
+onMouseEnter_ = makeProducer_ Types.OnMouseEnter
 
 onMouseLeave ∷ Producer DOM.MouseEvent
-onMouseLeave = makeProducer Types.OnMouseLeave eventToMouseEvent
+onMouseLeave = makeProducer Types.OnMouseLeave
+
+onMouseLeave_ ∷ Producer_ DOM.MouseEvent
+onMouseLeave_ = makeProducer_ Types.OnMouseLeave
 
 onMouseMove ∷ Producer DOM.MouseEvent
-onMouseMove = makeProducer Types.OnMouseMove eventToMouseEvent
+onMouseMove = makeProducer Types.OnMouseMove
+
+onMouseMove_ ∷ Producer_ DOM.MouseEvent
+onMouseMove_ = makeProducer_ Types.OnMouseMove
 
 onMouseOver ∷ Producer DOM.MouseEvent
-onMouseOver = makeProducer Types.OnMouseOver eventToMouseEvent
+onMouseOver = makeProducer Types.OnMouseOver
+
+onMouseOver_ ∷ Producer_ DOM.MouseEvent
+onMouseOver_ = makeProducer_ Types.OnMouseOver
 
 onMouseOut ∷ Producer DOM.MouseEvent
-onMouseOut = makeProducer Types.OnMouseOut eventToMouseEvent
+onMouseOut = makeProducer Types.OnMouseOut
+
+onMouseOut_ ∷ Producer_ DOM.MouseEvent
+onMouseOut_ = makeProducer_ Types.OnMouseOut
 
 onMouseUp ∷ Producer DOM.MouseEvent
-onMouseUp = makeProducer Types.OnMouseUp eventToMouseEvent
+onMouseUp = makeProducer Types.OnMouseUp
 
-onReset ∷ Producer DOM.Event
-onReset = makeProducer Types.OnReset id
+onMouseUp_ ∷ Producer_ DOM.MouseEvent
+onMouseUp_ = makeProducer_ Types.OnMouseUp
 
 onScroll ∷ Producer DOM.Event
-onScroll = makeProducer Types.OnScroll id
+onScroll = makeProducer Types.OnScroll
 
-onSelect ∷ Producer String
-onSelect handler = makeProducer' Types.OnSelect (targetValue handler)
-
-onSelect' ∷ Producer DOM.Event
-onSelect' = makeProducer Types.OnSelect id
+onScroll_ ∷ Producer_ DOM.Event
+onScroll_ = makeProducer_ Types.OnScroll
 
 onSubmit ∷ Producer DOM.Event
-onSubmit = makeProducer Types.OnSubmit id
+onSubmit = makeProducer Types.OnSubmit
+
+onSubmit_ ∷ Producer_ DOM.Event
+onSubmit_ = makeProducer_ Types.OnSubmit
 
 onTransitionEnd ∷ Producer DOM.Event
-onTransitionEnd = makeProducer Types.OnTransitionEnd id
+onTransitionEnd = makeProducer Types.OnTransitionEnd
 
--- | Properties are a weird combination of HTML attributes and node properties.
+onTransitionEnd_ ∷ Producer_ DOM.Event
+onTransitionEnd_ = makeProducer_ Types.OnTransitionEnd
+
 -- | This type is used to hide this nonsense from the user.
 type StaticProperty = ∀ event. Types.Property event
 
+-- | Make a property.
 make ∷ String → String → StaticProperty
 make key setting
   = Types.PropertyFixed
