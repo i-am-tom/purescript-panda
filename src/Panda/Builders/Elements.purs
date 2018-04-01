@@ -1,5 +1,9 @@
-module Panda.HTML.Elements where
+module Panda.Builders.Elements
+  ( module Panda.Builders.Elements
+  , module Panda.Builders.Element.Watchers
+  ) where
 
+import Panda.Builders.Element.Watchers
 import Panda.Internal.Types as Types
 
 type Element

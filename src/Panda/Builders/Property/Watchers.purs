@@ -1,10 +1,6 @@
-module Panda.Property.Watchers where
+module Panda.Builders.Property.Watchers where
 
-import Data.Foldable        (find)
-import Data.Maybe           (Maybe(..))
 import Panda.Internal.Types as Types
-
-import Prelude
 
 type Renderer update state event
   = { state ∷ state, update ∷ update }

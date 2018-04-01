@@ -18,7 +18,9 @@ import Partial.Unsafe            (unsafePartial)
 
 import Prelude
 
--- | Given a component, render the DOM node, and set up the event system.
+-- | Given a component, and a function for bootstrapping any delegate
+-- | applications that may exist within the tree, render the DOM node, and set
+-- | up the event system.
 render
   ∷ ∀ eff update state event
   . ( ∀ update' state' event'
@@ -34,14 +36,14 @@ render
       { element ∷ DOM.Node
       , system ∷ Types.EventSystem (Types.FX eff) update state event
       }
+
 render bootstrap document
   = case _ of
       Types.CText text → do
         element ← DOM.createTextNode text document
-        let element' = DOM.textToNode element
 
         pure
-          { element: element'
+          { element: DOM.textToNode element
           , system: mempty
           }
 
@@ -69,8 +71,8 @@ render bootstrap document
                 }
 
       Types.ComponentElement component → do
-        tag             ← DOM.createElement component.tagName document
-        propertySystem  ← Property.render tag component.properties
+        tag            ← DOM.createElement component.tagName document
+        propertySystem ← Property.render tag component.properties
 
         let node = DOM.elementToNode tag
 

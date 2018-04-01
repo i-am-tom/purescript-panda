@@ -10,7 +10,6 @@ import FRP.Event                (Event, subscribe) as FRP
 import Panda.Internal.Types     as Types
 import Panda.Render.Element     as Element
 
-import Debug.Trace (spy)
 import Prelude
 
 -- | Given an application, produce the DOM element and the system of events

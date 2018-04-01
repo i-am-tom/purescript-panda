@@ -9,7 +9,7 @@ module Test.Example.DataTable where
 import Control.Monad.Aff         (runAff_)
 import Control.Monad.Eff         (Eff)
 import Control.Monad.Eff.Class   (liftEff)
-import Control.Monad.Eff.Console (logShow)
+import Control.Monad.Eff.Console (CONSOLE, logShow)
 import Control.Plus              (empty)
 import Data.Algebra.Array        as CAlgebra
 import Data.Array                (sortWith)
@@ -22,12 +22,11 @@ import Data.Maybe                (Maybe(..))
 import Data.Monoid               (mempty)
 import Data.String               (Pattern(..), contains, toLower)
 import Simple.JSON               (readJSON)
-import Network.HTTP.Affjax       (get)
+import Network.HTTP.Affjax       (AJAX, get)
 
 import Panda                     as P
 import Panda.HTML                as PH
 import Panda.Property            as PP
-import Debug.Trace (spy)
 
 import Prelude
 
@@ -133,7 +132,7 @@ renderRow queen@{ name, age, origin, season }
 
       do
         PH.DynamicChildren \{ update, state } →
-          case spy update of
+          case update of
             RenderTable →
               [ CAlgebra.Empty
               , CAlgebra.Push (PH.td_ [ PH.text name ])
@@ -154,7 +153,7 @@ view
   = PH.section_
       [ PH.input
           [ PP.type_ "search"
-          , PP.onInput (Just <<< SearchEntered)
+          , PP.onInput' (Just <<< SearchEntered)
           , PP.placeholder "Search..."
           ]
 
@@ -183,7 +182,7 @@ view
       ]
 
 -- | Updater for our state object.
-updater ∷ P.Updater _ (Update _) State Event
+updater ∷ ∀ eff. P.Updater eff (Update eff) State Event
 updater dispatch { event, state }
   = case event of
       SearchEntered input →
@@ -236,8 +235,14 @@ application queens
       , update: updater
       }
 
+type FX eff
+  = ( ajax    ∷ AJAX
+    , console ∷ CONSOLE
+    | P.FX eff
+    )
+
 -- | Run the actual application!
-main ∷ Eff _ Unit
+main ∷ Eff (FX ()) Unit
 main = runAff_ mempty do
   queens ← get "Example/queens.json"
 

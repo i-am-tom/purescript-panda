@@ -18,12 +18,7 @@ import Unsafe.Coerce         (unsafeCoerce)
 import Prelude
 
 -- | The effects that are used within Panda's execution cycle.
-type FX eff
-  = ( dom ∷ DOM
-    , frp ∷ FRP
-    , ref ∷ REF
-    | eff
-    )
+type FX eff = ( dom ∷ DOM, frp ∷ FRP, ref ∷ REF | eff )
 
 -- | All the possible event producers within the Panda DSL.
 data Producer

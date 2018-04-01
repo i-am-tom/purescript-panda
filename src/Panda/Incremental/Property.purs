@@ -64,5 +64,7 @@ execute { element, systems, render, update } = do
 -- | event handler. This is also the string we use for the attribute when we
 -- | attach it to the DOM.
 producerToString ∷ Types.Producer → String
-producerToString producer
-  = toLower (drop 2 (show producer))
+producerToString -- Dirty hack: drop the "On"!
+    = toLower
+  <<< drop 2
+  <<< show

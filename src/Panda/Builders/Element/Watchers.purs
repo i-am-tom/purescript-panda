@@ -1,4 +1,4 @@
-module Panda.HTML.Watchers
+module Panda.Builders.Element.Watchers
   ( renderAlways
   , renderAlways'
   , renderOnlyWhen

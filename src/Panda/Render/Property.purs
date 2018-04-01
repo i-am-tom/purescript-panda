@@ -28,30 +28,23 @@ import Prelude
 producerToString ∷ Types.Producer → String
 producerToString
   = case _ of
-      Types.OnAbort         → "abort"
       Types.OnBlur          → "blur"
       Types.OnChange        → "change"
       Types.OnClick         → "click"
-      Types.OnContextMenu   → "contextmenu"
       Types.OnDoubleClick   → "dblclick"
       Types.OnDrag          → "drag"
       Types.OnDragEnd       → "dragend"
       Types.OnDragEnter     → "dragenter"
-      Types.OnDragExit      → "dragexit"
       Types.OnDragLeave     → "dragleave"
       Types.OnDragOver      → "dragover"
       Types.OnDragStart     → "dragstart"
       Types.OnDrop          → "drop"
       Types.OnError         → "error"
       Types.OnFocus         → "focus"
-      Types.OnFocusIn       → "focusin"
-      Types.OnFocusOut      → "focusout"
       Types.OnInput         → "input"
-      Types.OnInvalid       → "invalid"
       Types.OnKeyDown       → "keydown"
       Types.OnKeyPress      → "keypress"
       Types.OnKeyUp         → "keyup"
-      Types.OnLoad          → "load"
       Types.OnMouseDown     → "mousedown"
       Types.OnMouseEnter    → "mouseenter"
       Types.OnMouseLeave    → "mouseleave"
@@ -59,9 +52,7 @@ producerToString
       Types.OnMouseOver     → "mouseover"
       Types.OnMouseOut      → "mouseout"
       Types.OnMouseUp       → "mouseup"
-      Types.OnReset         → "reset"
       Types.OnScroll        → "scroll"
-      Types.OnSelect        → "select"
       Types.OnSubmit        → "submit"
       Types.OnTransitionEnd → "transitionend"
 
@@ -70,30 +61,23 @@ producerToString
 producerToEventType ∷ Types.Producer → DOM.EventType
 producerToEventType
   = case _ of
-      Types.OnAbort         → DOM.Events.abort
       Types.OnBlur          → DOM.Events.blur
       Types.OnChange        → DOM.Events.change
       Types.OnClick         → DOM.Events.click
-      Types.OnContextMenu   → DOM.Events.contextmenu
       Types.OnDoubleClick   → DOM.Events.dblclick
       Types.OnDrag          → DOM.Events.drag
       Types.OnDragEnd       → DOM.Events.dragend
       Types.OnDragEnter     → DOM.Events.dragenter
-      Types.OnDragExit      → DOM.Events.dragexit
       Types.OnDragLeave     → DOM.Events.dragleave
       Types.OnDragOver      → DOM.Events.dragover
       Types.OnDragStart     → DOM.Events.dragstart
       Types.OnDrop          → DOM.Events.drop
       Types.OnError         → DOM.Events.error
       Types.OnFocus         → DOM.Events.focus
-      Types.OnFocusIn       → DOM.Events.focusin
-      Types.OnFocusOut      → DOM.Events.focusout
       Types.OnInput         → DOM.Events.input
-      Types.OnInvalid       → DOM.Events.invalid
       Types.OnKeyDown       → DOM.Events.keydown
       Types.OnKeyPress      → DOM.Events.keypress
       Types.OnKeyUp         → DOM.Events.keyup
-      Types.OnLoad          → DOM.Events.load
       Types.OnMouseDown     → DOM.Events.mousedown
       Types.OnMouseEnter    → DOM.Events.mouseenter
       Types.OnMouseLeave    → DOM.Events.mouseleave
@@ -101,9 +85,7 @@ producerToEventType
       Types.OnMouseOver     → DOM.Events.mouseover
       Types.OnMouseOut      → DOM.Events.mouseout
       Types.OnMouseUp       → DOM.Events.mouseup
-      Types.OnReset         → DOM.Events.reset
       Types.OnScroll        → DOM.Events.scroll
-      Types.OnSelect        → DOM.Events.select
       Types.OnSubmit        → DOM.Events.submit
       Types.OnTransitionEnd → DOM.Events.transitionend
 
@@ -127,7 +109,7 @@ attach { key, onEvent } element = do
   let
     eventTarget = DOM.elementToEventTarget element
     eventType   = producerToEventType key
-    listener    = DOM.eventListener \e → push (onEvent e)
+    listener    = DOM.eventListener (push <<< onEvent)
 
   DOM.addEventListener eventType listener false eventTarget
   pure { listener, events }
@@ -169,11 +151,14 @@ render' element
               }
           )
 
+-- | Render a set of properties (static or dynamic) onto an element, and
+-- | prepare the event system.
 render
   ∷ ∀ eff update state event
   . DOM.Element
   → Types.Properties update state event
   → Eff (Types.FX eff) (Types.EventSystem (Types.FX eff) update state event)
+
 render element
   = case _ of
       Types.StaticProperties properties →
