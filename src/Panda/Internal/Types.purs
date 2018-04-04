@@ -3,14 +3,16 @@ module Panda.Internal.Types where
 import Control.Alt           ((<|>))
 import Control.Monad.Eff     (Eff, kind Effect)
 import Control.Monad.Eff.Ref (REF)
-import Control.Plus          (empty)
+import Data.Either           (Either)
 import DOM                   (DOM)
 import DOM.Event.Types       (Event) as DOM
 import Data.Algebra.Array    as Algebra.Array
+import Data.Algebra.Map      as Algebra.Map
 import Data.Generic.Rep      (class Generic)
 import Data.Generic.Rep.Show (genericShow)
 import Data.Maybe            (Maybe)
-import Data.Monoid           (class Monoid, mempty)
+import Data.Monoid           (class Monoid)
+import Data.String           (drop, toLower)
 import FRP                   (FRP)
 import FRP.Event             (Event) as FRP
 import Unsafe.Coerce         (unsafeCoerce)
@@ -50,15 +52,24 @@ data Producer
   | OnSubmit
   | OnTransitionEnd
 
+derive instance eqProducer      ∷ Eq Producer
 derive instance genericProducer ∷ Generic Producer _
+derive instance ordProducer     ∷ Ord Producer
 
 instance showProducer ∷ Show Producer where
   show = genericShow
 
--- TODO: bring this back in line with Data.Algebra.Map
-data PropertyUpdate event
-  = PropertyAdd (Property event)
-  | PropertyDelete String
+-- | Given a Producer, return the string that identifies it when adding an
+-- | event handler. This is also the string we use for the attribute when we
+-- | attach it to the DOM. Dirty hack, internally.
+producerToString ∷ Producer → String
+producerToString = toLower <<< drop 2 <<< show
+
+-- | A property update acts either on an event handler, or a static property.
+type PropertyUpdate event
+  = Either
+      (Algebra.Map.Update Producer (DOM.Event → Maybe event))
+      (Algebra.Map.Update String String)
 
 -- | Properties are either static key/value pairs, listeners for DOM updates
 -- | (that can then change the properties on an element), or producers of
@@ -161,8 +172,8 @@ runComponentDelegateX
 -- | An event system defines the update/event mechanism for a particular
 -- | component. When we update the DOM, we must remember to cancel outgoing
 -- | elements, and register new update handlers.
-newtype EventSystem eff update state event
-  = EventSystem
+data EventSystem eff update state event
+  = DynamicSystem
       { cancel       ∷ Eff eff Unit
       , events       ∷ FRP.Event event
       , handleUpdate
@@ -172,40 +183,21 @@ newtype EventSystem eff update state event
           → Eff eff Unit
       }
 
-handleUpdate
-  ∷ ∀ eff update state event
-  . { update ∷ update
-    , state  ∷ state
-    }
-  → EventSystem eff update state event
-  → Eff eff Unit
-handleUpdate update (EventSystem system)
-  = system.handleUpdate update
+  | StaticSystem -- There's no event system required!
 
-cancel
-  ∷ ∀ eff update state event
-  . EventSystem eff update state event
-  → Eff eff Unit
-cancel (EventSystem system)
-  = system.cancel
-
-instance semigroupEventSystem
-    ∷ Semigroup (EventSystem eff update state event) where
-  append (EventSystem this) (EventSystem that)
-    = EventSystem
+instance semigroupEventSystem ∷ Semigroup (EventSystem eff update state event) where
+  append (DynamicSystem this) (DynamicSystem that)
+    = DynamicSystem
         { events: this.events <|> that.events
         , cancel: this.cancel *> that.cancel
         , handleUpdate: this.handleUpdate <> that.handleUpdate
         }
 
-instance monoidEventSystem
-    ∷ Monoid (EventSystem eff update state event) where
-  mempty
-    = EventSystem
-        { events: empty
-        , cancel: mempty
-        , handleUpdate: mempty
-        }
+  append (DynamicSystem this) _    = DynamicSystem this
+  append  _                   that = that
+
+instance monoidEventSystem ∷ Monoid (EventSystem eff update state event) where
+  mempty = StaticSystem
 
 -- | Convenience synonym for defining the type of updaters within a Panda
 -- | application.

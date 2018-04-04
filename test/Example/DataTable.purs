@@ -21,8 +21,8 @@ import Data.Generic.Rep.Show     (genericShow)
 import Data.Maybe                (Maybe(..))
 import Data.Monoid               (mempty)
 import Data.String               (Pattern(..), contains, toLower)
-import Simple.JSON               (readJSON)
 import Network.HTTP.Affjax       (AJAX, get)
+import Simple.JSON               (readJSON)
 
 import Panda                     as P
 import Panda.HTML                as PH
@@ -74,15 +74,11 @@ makeTableHeader header
         PP.DynamicProperties \{ update, state } →
           case update of
             UpdateTableRows _ →
-              let
-                modifier
-                  = if state.isAscending
-                      then "highlight--ascending"
-                      else "highlight--descending"
-
-              in if header /= state.header
-                then [ PP.PropertyDelete "class" ]
-                else [ PP.PropertyAdd $ PP.className ("highlight " <> modifier) ]
+              PP.renderAlways
+                [ PP.className if state.isAscending
+                    then "highlight highlight--ascending"
+                    else "highlight highlight--descending"
+                ]
 
             _ →
               []

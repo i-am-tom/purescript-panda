@@ -105,7 +105,7 @@ module Panda.Builders.Properties
   ) where
 
 import Panda.Internal.Types as Types
-import Panda.Internal.Types (Properties(..), Property(..), PropertyUpdate(..)) as ExportedTypes
+import Panda.Internal.Types (Properties(..), Property(..), PropertyUpdate) as ExportedTypes
 import Panda.Builders.Property.Producers as Producers
 import Panda.Builders.Property.Watchers as Watchers
 

@@ -50,25 +50,30 @@ render bootstrap document
       Types.ComponentDelegate delegateE →
         delegateE # Types.runComponentDelegateX
           \({ delegate, focus }) → do
-              { element, system: Types.EventSystem system }
-                  ← bootstrap delegate
+              { element, system } ← bootstrap delegate
 
-              pure
-                { element
-                , system: Types.EventSystem $ system
-                    { events = filterMap focus.event system.events
-                    , handleUpdate = \{ state, update } →
-                        case focus.update update of
-                          Just subupdate →
-                            system.handleUpdate
-                              { update: subupdate
-                              , state:  focus.state state
-                              }
+              pure case system of
+                Types.DynamicSystem system' →
+                  { element
+                  , system: Types.DynamicSystem $ system'
+                      { events = filterMap focus.event system'.events
+                      , handleUpdate = \{ state, update } →
+                          case focus.update update of
+                            Just subupdate →
+                              system'.handleUpdate
+                                { update: subupdate
+                                , state:  focus.state state
+                                }
 
-                          Nothing →
-                            pure unit
-                    }
-                }
+                            Nothing →
+                              pure unit
+                      }
+                  }
+
+                Types.StaticSystem →
+                  { element
+                  , system: Types.StaticSystem
+                  }
 
       Types.ComponentElement component → do
         tag            ← DOM.createElement component.tagName document
@@ -88,10 +93,13 @@ render bootstrap document
             eventSystems ← Ref.newRef mempty
             { event: childEvents, push: pushChildEvent } ← FRP.create
 
-            pure $ Types.EventSystem
-              { cancel: Ref.readRef eventSystems
-                  >>= foldMap \(Types.EventSystem { cancel }) →
-                        cancel
+            pure $ Types.DynamicSystem
+              { cancel: Ref.readRef eventSystems >>= foldMap case _ of
+                  Types.DynamicSystem { cancel } →
+                    cancel
+
+                  Types.StaticSystem →
+                    pure unit
 
               , handleUpdate: \update → do
                   for_ (listener update) \instruction → do
@@ -105,32 +113,40 @@ render bootstrap document
                           , update: instruction
                           }
 
-                    case hasNewItem of
-                      Nothing →
-                        Ref.writeRef eventSystems updatedSystems
+                    let
+                      indexAndSystem = do
+                        index  ← hasNewItem
+                        system ← Array.index updatedSystems index
 
-                      Just index → do
-                        let
-                          Types.EventSystem system
-                            = unsafePartial fromJust
-                              $ Array.index updatedSystems index
+                        pure { index, system }
 
-                        canceller ←
-                          FRP.subscribe
-                            system.events
-                            pushChildEvent
+                    case indexAndSystem of
+                      Just { index, system: Types.DynamicSystem system } → do
+                        canceller ← FRP.subscribe system.events pushChildEvent
 
                         let
                           updated
-                            = Types.EventSystem
-                            $ system { cancel = system.cancel <> canceller }
+                            = Types.DynamicSystem $ system
+                                { cancel = do
+                                    system.cancel
+                                    canceller
+                                }
 
                         Ref.writeRef eventSystems
                           $ unsafePartial fromJust
                           $ Array.insertAt index updated updatedSystems
 
+                      _ →
+                        Ref.writeRef eventSystems updatedSystems
+
                   systems ← Ref.readRef eventSystems
-                  for_ systems (Types.handleUpdate update)
+
+                  for_ systems case _ of
+                    Types.DynamicSystem { handleUpdate } →
+                      handleUpdate update
+
+                    Types.StaticSystem →
+                      pure unit
 
               , events: childEvents
               }

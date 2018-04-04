@@ -5,24 +5,19 @@ module Panda.Incremental.Property
 import Control.Monad.Eff    (Eff)
 import DOM.Node.Element     (removeAttribute) as DOM
 import DOM.Node.Types       (Element) as DOM
+import Data.Algebra.Map     as Algebra
+import Data.Either          (Either(..))
+import Data.Foldable        (for_)
 import Data.Map             as Map
 import Data.Maybe           (Maybe(..))
-import Data.String          (drop, toLower)
 import Panda.Internal.Types as Types
 
 import Prelude
 
 type PropertySystem eff update state event
-  = Map.Map String (Types.EventSystem eff update state event)
-
-propertyToAttribute
-  ∷ ∀ event
-  . Types.Property event
-  → String
-propertyToAttribute
-  = case _ of
-      Types.PropertyProducer { key } → producerToString  key
-      Types.PropertyFixed { key }    → key
+  = Map.Map
+      (Either Types.Producer String)
+      (Types.EventSystem eff update state event)
 
 -- | Given an element, and a set of update instructions, perform the update and
 -- | reconfigure the event systems.
@@ -38,33 +33,112 @@ execute
     }
   → Eff (Types.FX eff)
       { systems ∷ PropertySystem (Types.FX eff) update state event
-      , hasNewItem ∷ Maybe String
+      , hasNewItem ∷ Maybe (Either Types.Producer String)
       }
 
-execute { element, systems, render, update } = do
-  case update of
-    Types.PropertyAdd property → do
-      let attribute = propertyToAttribute property
-      system ← render property
+execute { element, systems, render, update }
+  = case update of
+      Left producer →
+        case producer of
+          Algebra.Add key onEvent → do
+            system ← render (Types.PropertyProducer { key, onEvent })
 
-      pure
-        { systems: Map.insert attribute system systems
-        , hasNewItem: Just attribute
-        }
+            pure
+              { systems: Map.insert (Left key) system systems
+              , hasNewItem: Just (Left key)
+              }
 
-    Types.PropertyDelete key → do
-      DOM.removeAttribute  key element
+          Algebra.Delete key → do
+            DOM.removeAttribute (Types.producerToString key) element
 
-      pure
-        { systems: Map.delete key systems
-        , hasNewItem: Nothing
-        }
+            case Map.lookup (Left key) systems of
+              Just (Types.DynamicSystem { cancel }) →
+                cancel
 
--- | Given a Producer, return the string that identifies it when adding an
--- | event handler. This is also the string we use for the attribute when we
--- | attach it to the DOM.
-producerToString ∷ Types.Producer → String
-producerToString -- Dirty hack: drop the "On"!
-    = toLower
-  <<< drop 2
-  <<< show
+              _ →
+                pure unit
+
+            pure
+              { systems: Map.delete (Left key) systems
+              , hasNewItem: Nothing
+              }
+
+          Algebra.Empty → do
+            for_ systems case _ of
+              Types.DynamicSystem { cancel } →
+                cancel
+
+              Types.StaticSystem →
+                pure unit
+
+            pure
+              { systems: Map.empty
+              , hasNewItem: Nothing
+              }
+
+          Algebra.Rename from to → do
+            case Map.lookup (Left to) systems of
+              Just (Types.DynamicSystem { cancel }) →
+                cancel
+
+              _ →
+                pure unit
+
+            pure case Map.lookup (Left from) systems of
+              Just system →
+                { systems: Map.insert (Left to) system
+                    $ Map.delete (Left from) systems
+
+                , hasNewItem: Nothing
+                }
+
+              Nothing →
+                { systems
+                , hasNewItem: Nothing
+                }
+
+          Algebra.Swap this that → do
+            -- TODO: implement
+            pure { systems, hasNewItem: Nothing }
+
+      Right static →
+        case static of
+          Algebra.Add key value → do
+            system ← render (Types.PropertyFixed { key, value })
+
+            pure
+              { systems: Map.insert (Right key) system systems
+              , hasNewItem: Just (Right key)
+              }
+
+          Algebra.Delete key → do
+            case Map.lookup (Right key) systems of
+              Just (Types.DynamicSystem { cancel }) →
+                cancel
+
+              _ →
+                pure unit
+
+            pure
+              { systems: Map.delete (Right key) systems
+              , hasNewItem: Nothing
+              }
+
+          Algebra.Empty → do
+            for_ systems case _ of
+              Types.DynamicSystem { cancel } →
+                cancel
+
+              Types.StaticSystem →
+                pure unit
+
+            pure
+              { systems: Map.empty
+              , hasNewItem: Nothing
+              }
+
+          Algebra.Rename from to →
+            pure { systems, hasNewItem: Nothing }
+
+          Algebra.Swap this that →
+            pure { systems, hasNewItem: Nothing }

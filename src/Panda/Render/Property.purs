@@ -4,7 +4,6 @@ module Panda.Render.Property
 
 import Control.Monad.Eff          (Eff)
 import Control.Monad.Eff.Ref      as Ref
-import Control.Plus               (empty)
 import DOM.Event.EventTarget      (addEventListener, eventListener, removeEventListener, EventListener) as DOM
 import DOM.Event.Types            (Event, EventType) as DOM
 import DOM.HTML.Event.EventTypes  as DOM.Events
@@ -13,48 +12,12 @@ import DOM.Node.Types             (Element, elementToEventTarget) as DOM
 import Data.Filterable            (filtered)
 import Data.Foldable              (foldMap, for_, traverse_)
 import Data.Map                   as Map
-import Data.Maybe                 (Maybe(..), fromJust)
-import Data.Monoid                (mempty)
+import Data.Maybe                 (Maybe(..))
 import FRP.Event                  (Event, create, subscribe) as FRP
 import Panda.Incremental.Property (execute)
 import Panda.Internal.Types       as Types
-import Partial.Unsafe             (unsafePartial)
 
 import Prelude
-
--- | Given a Producer, return the string that identifies it when adding an
--- | event handler. This is also the string we use for the attribute when we
--- | attach it to the DOM.
-producerToString ∷ Types.Producer → String
-producerToString
-  = case _ of
-      Types.OnBlur          → "blur"
-      Types.OnChange        → "change"
-      Types.OnClick         → "click"
-      Types.OnDoubleClick   → "dblclick"
-      Types.OnDrag          → "drag"
-      Types.OnDragEnd       → "dragend"
-      Types.OnDragEnter     → "dragenter"
-      Types.OnDragLeave     → "dragleave"
-      Types.OnDragOver      → "dragover"
-      Types.OnDragStart     → "dragstart"
-      Types.OnDrop          → "drop"
-      Types.OnError         → "error"
-      Types.OnFocus         → "focus"
-      Types.OnInput         → "input"
-      Types.OnKeyDown       → "keydown"
-      Types.OnKeyPress      → "keypress"
-      Types.OnKeyUp         → "keyup"
-      Types.OnMouseDown     → "mousedown"
-      Types.OnMouseEnter    → "mouseenter"
-      Types.OnMouseLeave    → "mouseleave"
-      Types.OnMouseMove     → "mousemove"
-      Types.OnMouseOver     → "mouseover"
-      Types.OnMouseOut      → "mouseout"
-      Types.OnMouseUp       → "mouseup"
-      Types.OnScroll        → "scroll"
-      Types.OnSubmit        → "submit"
-      Types.OnTransitionEnd → "transitionend"
 
 -- | Convert a Producer into a regular DOM event. This is used to produce an
 -- EventTarget.
@@ -126,14 +89,7 @@ render' element
   = case _ of
       Types.PropertyFixed { key, value } → do
         DOM.setAttribute key value element
-
-        pure
-          ( Types.EventSystem
-              { cancel: mempty
-              , events: empty
-              , handleUpdate: mempty
-              }
-          )
+        pure Types.StaticSystem
 
       Types.PropertyProducer trigger → do
         { listener, events } ← attach trigger element
@@ -142,14 +98,12 @@ render' element
           eventTarget = DOM.elementToEventTarget element
           eventType   = producerToEventType trigger.key
 
-        pure
-          ( Types.EventSystem
-              { cancel: DOM.removeEventListener
-                  eventType listener false eventTarget
-              , events: filtered events
-              , handleUpdate: \_ → pure unit
-              }
-          )
+        pure $ Types.DynamicSystem
+          { cancel: DOM.removeEventListener
+              eventType listener false eventTarget
+          , events: filtered events
+          , handleUpdate: \_ → pure unit
+          }
 
 -- | Render a set of properties (static or dynamic) onto an element, and
 -- | prepare the event system.
@@ -168,37 +122,39 @@ render element
         eventSystems                               ← Ref.newRef Map.empty
         { event: events, push: pushPropertyEvent } ← FRP.create
 
-        pure
-          ( Types.EventSystem
-              { cancel: do
-                  systems ← Ref.readRef eventSystems
-                  for_ systems Types.cancel
+        pure $ Types.DynamicSystem
+          { cancel: do
+              systems ← Ref.readRef eventSystems
 
-              , events
+              for_ systems case _ of
+                Types.DynamicSystem { cancel } →
+                  cancel
 
-              , handleUpdate: listener >>> traverse_ \instruction → do
-                  systems ← Ref.readRef eventSystems
+                _ →
+                  pure unit
 
-                  { hasNewItem, systems: updatedSystems } ←
-                      execute
-                        { element
-                        , systems
-                        , render: render' element
-                        , update: instruction
-                        }
+          , events
 
-                  case hasNewItem of
-                    Nothing →
-                      Ref.writeRef
-                        eventSystems
-                        updatedSystems
+          , handleUpdate: listener >>> traverse_ \instruction → do
+              systems ← Ref.readRef eventSystems
 
-                    Just index → do
-                      let
-                        Types.EventSystem system
-                          = unsafePartial fromJust
-                          $ Map.lookup index updatedSystems
+              { hasNewItem, systems: updatedSystems } ←
+                  execute
+                    { element
+                    , systems
+                    , render: render' element
+                    , update: instruction
+                    }
 
+              case hasNewItem of
+                Nothing →
+                  Ref.writeRef
+                    eventSystems
+                    updatedSystems
+
+                Just index →
+                  case Map.lookup index updatedSystems of
+                    Just (Types.DynamicSystem system) → do
                       canceller ←
                         FRP.subscribe
                           system.events
@@ -206,11 +162,15 @@ render element
 
                       let
                         updated
-                          = Types.EventSystem
-                          $ system { cancel = system.cancel <> canceller }
+                          = Types.DynamicSystem $ system
+                              { cancel = do
+                                  system.cancel
+                                  canceller
+                              }
 
                       Ref.writeRef eventSystems
                         $ Map.insert index updated updatedSystems
-              }
-          )
 
+                    _ →
+                      pure unit
+          }

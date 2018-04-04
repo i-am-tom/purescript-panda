@@ -48,9 +48,15 @@ execute { parent, systems, render, update } = do
             <*> Array.index systems  index
 
         case result of
-          Just { updated, element, system: Types.EventSystem system } → do
+          Just { updated, element, system } → do
             _ ← DOM.removeChild element parent
-            system.cancel
+
+            case system of
+              Types.DynamicSystem { cancel } →
+                cancel
+
+              Types.StaticSystem →
+                pure unit
 
             pure
               { systems: updated
@@ -65,7 +71,12 @@ execute { parent, systems, render, update } = do
 
       -- Remove all the children from the DOM node and run all the cancellers.
       Algebra.Empty → do
-        for_ systems Types.cancel
+        for_ systems case _ of
+          Types.DynamicSystem { cancel } →
+            cancel
+
+          Types.StaticSystem →
+            pure unit
 
         for_ children \node → do
           _ ← DOM.removeChild node parent
@@ -143,11 +154,13 @@ execute { parent, systems, render, update } = do
 
         case result of
           Just { elements, eventSystems } → do
-            let
-              Types.EventSystem system
-                = eventSystems.last
+            case eventSystems.last of
+              Types.DynamicSystem { cancel } →
+                cancel
 
-            system.cancel
+              Types.StaticSystem →
+                pure unit
+
             _ ← DOM.removeChild elements.last parent
 
             pure
@@ -180,11 +193,13 @@ execute { parent, systems, render, update } = do
 
         case result of
           Just { elements, eventSystems } → do
-            let
-              Types.EventSystem system
-                = eventSystems.head
+            case eventSystems.head of
+              Types.DynamicSystem { cancel } →
+                cancel
 
-            system.cancel
+              Types.StaticSystem →
+                pure unit
+
             _ ← DOM.removeChild elements.head parent
 
             pure

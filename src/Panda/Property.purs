@@ -6,8 +6,9 @@ module Panda.Property
 import Panda.Builders.Properties as Properties
 import Panda.Internal.Types
          ( Producer       (..)
-         , PropertyUpdate (..)
          , Property       (..)
          , Properties     (..)
+
+         , PropertyUpdate
          )
   as ExportedTypes

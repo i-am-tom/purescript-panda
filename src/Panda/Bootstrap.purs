@@ -24,34 +24,40 @@ bootstrap
       }
 
 bootstrap document { initial, subscription, update, view } = do
-  { element, system: Types.EventSystem system }
-      ← Element.render (bootstrap document) document view
+  { element, system } ← Element.render (bootstrap document) document view
 
-  stateRef ← Ref.newRef initial.state
+  case system of
+    Types.StaticSystem →
+      pure
+        { element
+        , system
+        }
 
-  let
-    events ∷ FRP.Event event
-    events = subscription <|> system.events
+    Types.DynamicSystem system' → do
+      stateRef ← Ref.newRef initial.state
 
-  cancel ← FRP.subscribe events \event → do
-    state ← Ref.readRef stateRef
+      let
+        events ∷ FRP.Event event
+        events = subscription <|> system'.events
 
-    { event, state } # update \callback → do
-      mostRecentState ← Ref.readRef stateRef
-      let new@{ state } = callback mostRecentState
+      cancel ← FRP.subscribe events \event → do
+        state ← Ref.readRef stateRef
 
-      Ref.writeRef stateRef state
-      system.handleUpdate new
+        { event, state } # update \callback → do
+          mostRecentState ← Ref.readRef stateRef
+          let new@{ state } = callback mostRecentState
 
-  system.handleUpdate initial
+          Ref.writeRef stateRef state
+          system'.handleUpdate new
 
-  pure
-    { element
-    , system: Types.EventSystem
-        $ system
-            { cancel = do
-                system.cancel
-                cancel
-            }
-    }
+      system'.handleUpdate initial
 
+      pure
+        { element
+        , system: Types.DynamicSystem
+            $ system'
+                { cancel = do
+                    system'.cancel
+                    cancel
+                }
+        }
