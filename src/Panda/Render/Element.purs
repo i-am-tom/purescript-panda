@@ -12,7 +12,7 @@ import Data.Maybe                (Maybe(..), fromJust)
 import Data.Monoid               (mempty)
 import FRP.Event                 (create, subscribe) as FRP
 import Panda.Incremental.Element (execute)
-import Panda.Internal            as Types
+import Panda.Internal            as I
 import Panda.Render.Property     as Property
 import Partial.Unsafe            (unsafePartial)
 
@@ -24,22 +24,22 @@ import Prelude
 render
   ∷ ∀ eff update state event
   . ( ∀ update' state' event'
-      . Types.Application (Types.FX eff) update' state' event'
-      → Eff (Types.FX eff)
+      . I.Application (I.FX eff) update' state' event'
+      → Eff (I.FX eff)
           { element ∷ DOM.Node
-          , system ∷ Types.EventSystem (Types.FX eff) update' state' event'
+          , system ∷ I.EventSystem (I.FX eff) update' state' event'
           }
     )
   → DOM.Document
-  → Types.Component (Types.FX eff) update state event
-  → Eff (Types.FX eff)
+  → I.Component (I.FX eff) update state event
+  → Eff (I.FX eff)
       { element ∷ DOM.Node
-      , system ∷ Types.EventSystem (Types.FX eff) update state event
+      , system ∷ I.EventSystem (I.FX eff) update state event
       }
 
 render bootstrap document
   = case _ of
-      Types.CText text → do
+      I.ComponentText text → do
         element ← DOM.createTextNode text document
 
         pure
@@ -47,60 +47,49 @@ render bootstrap document
           , system: mempty
           }
 
-      Types.ComponentDelegate delegateE →
-        delegateE # Types.runComponentDelegateX
-          \({ delegate, focus }) → do
-              { element, system } ← bootstrap delegate
+      I.ComponentDelegate delegateE →
+        delegateE # I.runComponentDelegateX
+          \{ delegate, focus } →
+              bootstrap delegate <#> \{ element, system } →
+                case system of
+                  I.StaticSystem →
+                    { element
+                    , system: I.StaticSystem
+                    }
 
-              pure case system of
-                Types.DynamicSystem system' →
-                  { element
-                  , system: Types.DynamicSystem $ system'
-                      { events = filterMap focus.event system'.events
-                      , handleUpdate = \{ state, update } →
-                          case focus.update update of
-                            Just subupdate →
+                  I.DynamicSystem system' →
+                    { element
+                    , system: I.DynamicSystem $ system'
+                        { events = filterMap focus.event system'.events
+                        , handleUpdate = \{ state, update } →
+                            for_ (focus.update update) \subupdate →
                               system'.handleUpdate
                                 { update: subupdate
                                 , state:  focus.state state
                                 }
+                        }
+                    }
 
-                            Nothing →
-                              pure unit
-                      }
-                  }
-
-                Types.StaticSystem →
-                  { element
-                  , system: Types.StaticSystem
-                  }
-
-      Types.ComponentElement component → do
+      I.ComponentElement component → do
         tag            ← DOM.createElement component.tagName document
         propertySystem ← Property.render tag component.properties
 
         let node = DOM.elementToNode tag
 
         elementSystem ← case component.children of
-          Types.StaticChildren children →
+          I.StaticChildren children →
             children # foldMap \child → do
               { element, system } ← render bootstrap document child
 
               _ ← DOM.appendChild element node
               pure system
 
-          Types.DynamicChildren listener → do
+          I.DynamicChildren listener → do
             eventSystems ← Ref.newRef mempty
             { event: childEvents, push: pushChildEvent } ← FRP.create
 
-            pure $ Types.DynamicSystem
-              { cancel: Ref.readRef eventSystems >>= foldMap case _ of
-                  Types.DynamicSystem { cancel } →
-                    cancel
-
-                  Types.StaticSystem →
-                    pure unit
-
+            pure $ I.DynamicSystem
+              { cancel: Ref.readRef eventSystems >>= foldMap I.cancelEventSystem
               , handleUpdate: \update → do
                   for_ (listener update) \instruction → do
                     systems ← Ref.readRef eventSystems
@@ -121,12 +110,12 @@ render bootstrap document
                         pure { index, system }
 
                     case indexAndSystem of
-                      Just { index, system: Types.DynamicSystem system } → do
+                      Just { index, system: I.DynamicSystem system } → do
                         canceller ← FRP.subscribe system.events pushChildEvent
 
                         let
                           updated
-                            = Types.DynamicSystem $ system
+                            = I.DynamicSystem $ system
                                 { cancel = do
                                     system.cancel
                                     canceller
@@ -140,13 +129,7 @@ render bootstrap document
                         Ref.writeRef eventSystems updatedSystems
 
                   systems ← Ref.readRef eventSystems
-
-                  for_ systems case _ of
-                    Types.DynamicSystem { handleUpdate } →
-                      handleUpdate update
-
-                    Types.StaticSystem →
-                      pure unit
+                  for_ systems (I.handleUpdateWithEventSystem update)
 
               , events: childEvents
               }

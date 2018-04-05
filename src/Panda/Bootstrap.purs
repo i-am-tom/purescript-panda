@@ -7,7 +7,7 @@ import Control.Monad.Eff     (Eff)
 import Control.Monad.Eff.Ref as Ref
 import DOM.Node.Types        (Document, Node) as DOM
 import FRP.Event             (Event, subscribe) as FRP
-import Panda.Internal        (Application, EventSystem(..), FX, foldEventSystem)
+import Panda.Internal        as I
 import Panda.Render.Element  as Element
 
 import Prelude
@@ -17,16 +17,16 @@ import Prelude
 bootstrap
   ∷ ∀ eff update state event
   . DOM.Document
-  → Application (FX eff) update state event
-  → Eff (FX eff)
+  → I.Application (I.FX eff) update state event
+  → Eff (I.FX eff)
       { element ∷ DOM.Node
-      , system ∷ EventSystem (FX eff) update state event
+      , system ∷ I.EventSystem (I.FX eff) update state event
       }
 
 bootstrap document { initial, subscription, update, view } = do
   result ← Element.render (bootstrap document) document view
 
-  result.system # foldEventSystem (pure result) \system → do
+  result.system # I.foldEventSystem (pure result) \system → do
     stateRef ← Ref.newRef initial.state
 
     let
@@ -46,7 +46,7 @@ bootstrap document { initial, subscription, update, view } = do
     system.handleUpdate initial
 
     pure $ result
-      { system = DynamicSystem
+      { system = I.DynamicSystem
           $ system
               { cancel = do
                   system.cancel

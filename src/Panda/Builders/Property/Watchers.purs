@@ -1,10 +1,12 @@
 module Panda.Builders.Property.Watchers where
 
-import Panda.Internal
+import Panda.Internal as I
 
+-- | The type of a property renderer. Anything that produces property update
+-- | algebra as the result of a given state and update.
 type Renderer update state event
   = { state ∷ state, update ∷ update }
-  → Array (PropertyUpdate event)
+  → Array (I.PropertyUpdate event)
 
 -- -- | General constructor for property watches. Kind of the "advanced mode" -
 -- -- | use the other functions if possible.

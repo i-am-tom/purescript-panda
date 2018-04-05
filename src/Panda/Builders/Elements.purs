@@ -1237,7 +1237,7 @@ text
   . String
   → Component eff update state event
 text
-  = CText
+  = ComponentText
 
 textarea ∷ StaticElement
 textarea = make "textarea"

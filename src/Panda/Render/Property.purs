@@ -20,7 +20,7 @@ import Panda.Internal             as Types
 import Prelude
 
 -- | Convert a Producer into a regular DOM event. This is used to produce an
--- EventTarget.
+-- | EventTarget.
 producerToEventType ∷ Types.Producer → DOM.EventType
 producerToEventType
   = case _ of

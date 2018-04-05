@@ -67,7 +67,7 @@ import Data.Either          (either)
 import Data.Foreign         (readInt, readString, toForeign) as F
 import Data.Foreign.Index   (readProp) as F
 import Data.Maybe           (Maybe(..))
-import Panda.Internal       as Types
+import Panda.Internal       as I
 import Unsafe.Coerce        (unsafeCoerce)
 
 import Prelude
@@ -106,15 +106,15 @@ keyCode handler ev
 type Producer input
   = ∀ event
   . (input → Maybe event)
-  → Types.Property event
+  → I.Property event
 
 makeProducer
   ∷ ∀ input
-  . Types.Producer
+  . I.Producer
   → Producer input
 
 makeProducer key onEvent
-  = Types.PropertyProducer
+  = I.PropertyProducer
       { key
       , onEvent: onEvent <<< unsafeCoerce
       }
@@ -122,189 +122,189 @@ makeProducer key onEvent
 type Producer_ input
   = ∀ event
   . (input → event)
-  → Types.Property event
+  → I.Property event
 
 makeProducer_
   ∷ ∀ input
-  . Types.Producer
+  . I.Producer
   → Producer_ input
 
 makeProducer_ key onEvent
   = makeProducer key (Just <<< onEvent)
 
 onBlur ∷ Producer DOM.FocusEvent
-onBlur = makeProducer Types.OnBlur
+onBlur = makeProducer I.OnBlur
 
 onBlur_ ∷ Producer_ DOM.FocusEvent
-onBlur_ = makeProducer_ Types.OnBlur
+onBlur_ = makeProducer_ I.OnBlur
 
 onChange ∷ Producer DOM.Event
-onChange = makeProducer Types.OnChange
+onChange = makeProducer I.OnChange
 
 onChange' ∷ Producer String
-onChange' = makeProducer Types.OnChange <<< targetValue
+onChange' = makeProducer I.OnChange <<< targetValue
 
 onChange_ ∷ Producer_ String
-onChange_ = makeProducer_ Types.OnChange
+onChange_ = makeProducer_ I.OnChange
 
 onClick ∷ Producer DOM.MouseEvent
-onClick = makeProducer Types.OnClick
+onClick = makeProducer I.OnClick
 
 onClick_ ∷ Producer_ DOM.MouseEvent
-onClick_ = makeProducer_ Types.OnClick
+onClick_ = makeProducer_ I.OnClick
 
 onDoubleClick ∷ Producer DOM.MouseEvent
-onDoubleClick = makeProducer Types.OnDoubleClick
+onDoubleClick = makeProducer I.OnDoubleClick
 
 onDoubleClick_ ∷ Producer_ DOM.MouseEvent
-onDoubleClick_ = makeProducer_ Types.OnDoubleClick
+onDoubleClick_ = makeProducer_ I.OnDoubleClick
 
 onDrag ∷ Producer DOM.DragEvent
-onDrag = makeProducer Types.OnDrag
+onDrag = makeProducer I.OnDrag
 
 onDrag_ ∷ Producer_ DOM.DragEvent
-onDrag_ = makeProducer_ Types.OnDrag
+onDrag_ = makeProducer_ I.OnDrag
 
 onDragEnd ∷ Producer DOM.DragEvent
-onDragEnd = makeProducer Types.OnDragEnd
+onDragEnd = makeProducer I.OnDragEnd
 
 onDragEnd_ ∷ Producer_ DOM.DragEvent
-onDragEnd_ = makeProducer_ Types.OnDragEnd
+onDragEnd_ = makeProducer_ I.OnDragEnd
 
 onDragEnter ∷ Producer DOM.DragEvent
-onDragEnter = makeProducer Types.OnDragEnter
+onDragEnter = makeProducer I.OnDragEnter
 
 onDragEnter_ ∷ Producer_ DOM.DragEvent
-onDragEnter_ = makeProducer_ Types.OnDragEnter
+onDragEnter_ = makeProducer_ I.OnDragEnter
 
 onDragLeave ∷ Producer DOM.DragEvent
-onDragLeave = makeProducer Types.OnDragLeave
+onDragLeave = makeProducer I.OnDragLeave
 
 onDragLeave_ ∷ Producer_ DOM.DragEvent
-onDragLeave_ = makeProducer_ Types.OnDragLeave
+onDragLeave_ = makeProducer_ I.OnDragLeave
 
 onDragOver ∷ Producer DOM.DragEvent
-onDragOver = makeProducer Types.OnDragLeave
+onDragOver = makeProducer I.OnDragLeave
 
 onDragOver_ ∷ Producer_ DOM.DragEvent
-onDragOver_ = makeProducer_ Types.OnDragLeave
+onDragOver_ = makeProducer_ I.OnDragLeave
 
 onDragStart ∷ Producer DOM.DragEvent
-onDragStart = makeProducer Types.OnDragStart
+onDragStart = makeProducer I.OnDragStart
 
 onDragStart_ ∷ Producer_ DOM.DragEvent
-onDragStart_ = makeProducer_ Types.OnDragStart
+onDragStart_ = makeProducer_ I.OnDragStart
 
 onDrop ∷ Producer DOM.DragEvent
-onDrop = makeProducer Types.OnDrop
+onDrop = makeProducer I.OnDrop
 
 onDrop_ ∷ Producer_ DOM.DragEvent
-onDrop_ = makeProducer_ Types.OnDrop
+onDrop_ = makeProducer_ I.OnDrop
 
 onError ∷ Producer DOM.ErrorEvent
-onError = makeProducer Types.OnError
+onError = makeProducer I.OnError
 
 onError_ ∷ Producer_ DOM.ErrorEvent
-onError_ = makeProducer_ Types.OnError
+onError_ = makeProducer_ I.OnError
 
 onFocus ∷ Producer DOM.FocusEvent
-onFocus = makeProducer Types.OnFocus
+onFocus = makeProducer I.OnFocus
 
 onFocus_ ∷ Producer_ DOM.FocusEvent
-onFocus_ = makeProducer_ Types.OnFocus
+onFocus_ = makeProducer_ I.OnFocus
 
 onInput ∷ Producer DOM.Event
-onInput = makeProducer Types.OnFocus
+onInput = makeProducer I.OnFocus
 
 onInput_ ∷ Producer_ DOM.Event
-onInput_ = makeProducer_ Types.OnFocus
+onInput_ = makeProducer_ I.OnFocus
 
 onInput' ∷ Producer String
-onInput' = makeProducer Types.OnFocus <<< targetValue
+onInput' = makeProducer I.OnFocus <<< targetValue
 
 onKeyDown ∷ Producer DOM.KeyboardEvent
-onKeyDown = makeProducer Types.OnKeyDown
+onKeyDown = makeProducer I.OnKeyDown
 
 onKeyDown_ ∷ Producer_ DOM.KeyboardEvent
-onKeyDown_ = makeProducer_ Types.OnKeyDown
+onKeyDown_ = makeProducer_ I.OnKeyDown
 
 onKeyDown' ∷ Producer Int
-onKeyDown' = makeProducer Types.OnKeyDown <<< keyCode
+onKeyDown' = makeProducer I.OnKeyDown <<< keyCode
 
 onKeyPress ∷ Producer DOM.KeyboardEvent
-onKeyPress = makeProducer Types.OnKeyPress
+onKeyPress = makeProducer I.OnKeyPress
 
 onKeyPress_ ∷ Producer_ DOM.KeyboardEvent
-onKeyPress_ = makeProducer_ Types.OnKeyPress
+onKeyPress_ = makeProducer_ I.OnKeyPress
 
 onKeyPress' ∷ Producer Int
-onKeyPress' = makeProducer Types.OnKeyPress <<< keyCode
+onKeyPress' = makeProducer I.OnKeyPress <<< keyCode
 
 onKeyUp ∷ Producer DOM.KeyboardEvent
-onKeyUp = makeProducer Types.OnKeyUp
+onKeyUp = makeProducer I.OnKeyUp
 
 onKeyUp_ ∷ Producer_ DOM.KeyboardEvent
-onKeyUp_ = makeProducer_ Types.OnKeyUp
+onKeyUp_ = makeProducer_ I.OnKeyUp
 
 onKeyUp' ∷ Producer Int
-onKeyUp' = makeProducer Types.OnKeyUp <<< keyCode
+onKeyUp' = makeProducer I.OnKeyUp <<< keyCode
 
 onMouseDown ∷ Producer DOM.MouseEvent
-onMouseDown = makeProducer Types.OnMouseDown
+onMouseDown = makeProducer I.OnMouseDown
 
 onMouseDown_ ∷ Producer_ DOM.MouseEvent
-onMouseDown_ = makeProducer_ Types.OnMouseDown
+onMouseDown_ = makeProducer_ I.OnMouseDown
 
 onMouseEnter ∷ Producer DOM.MouseEvent
-onMouseEnter = makeProducer Types.OnMouseEnter
+onMouseEnter = makeProducer I.OnMouseEnter
 
 onMouseEnter_ ∷ Producer_ DOM.MouseEvent
-onMouseEnter_ = makeProducer_ Types.OnMouseEnter
+onMouseEnter_ = makeProducer_ I.OnMouseEnter
 
 onMouseLeave ∷ Producer DOM.MouseEvent
-onMouseLeave = makeProducer Types.OnMouseLeave
+onMouseLeave = makeProducer I.OnMouseLeave
 
 onMouseLeave_ ∷ Producer_ DOM.MouseEvent
-onMouseLeave_ = makeProducer_ Types.OnMouseLeave
+onMouseLeave_ = makeProducer_ I.OnMouseLeave
 
 onMouseMove ∷ Producer DOM.MouseEvent
-onMouseMove = makeProducer Types.OnMouseMove
+onMouseMove = makeProducer I.OnMouseMove
 
 onMouseMove_ ∷ Producer_ DOM.MouseEvent
-onMouseMove_ = makeProducer_ Types.OnMouseMove
+onMouseMove_ = makeProducer_ I.OnMouseMove
 
 onMouseOver ∷ Producer DOM.MouseEvent
-onMouseOver = makeProducer Types.OnMouseOver
+onMouseOver = makeProducer I.OnMouseOver
 
 onMouseOver_ ∷ Producer_ DOM.MouseEvent
-onMouseOver_ = makeProducer_ Types.OnMouseOver
+onMouseOver_ = makeProducer_ I.OnMouseOver
 
 onMouseOut ∷ Producer DOM.MouseEvent
-onMouseOut = makeProducer Types.OnMouseOut
+onMouseOut = makeProducer I.OnMouseOut
 
 onMouseOut_ ∷ Producer_ DOM.MouseEvent
-onMouseOut_ = makeProducer_ Types.OnMouseOut
+onMouseOut_ = makeProducer_ I.OnMouseOut
 
 onMouseUp ∷ Producer DOM.MouseEvent
-onMouseUp = makeProducer Types.OnMouseUp
+onMouseUp = makeProducer I.OnMouseUp
 
 onMouseUp_ ∷ Producer_ DOM.MouseEvent
-onMouseUp_ = makeProducer_ Types.OnMouseUp
+onMouseUp_ = makeProducer_ I.OnMouseUp
 
 onScroll ∷ Producer DOM.Event
-onScroll = makeProducer Types.OnScroll
+onScroll = makeProducer I.OnScroll
 
 onScroll_ ∷ Producer_ DOM.Event
-onScroll_ = makeProducer_ Types.OnScroll
+onScroll_ = makeProducer_ I.OnScroll
 
 onSubmit ∷ Producer DOM.Event
-onSubmit = makeProducer Types.OnSubmit
+onSubmit = makeProducer I.OnSubmit
 
 onSubmit_ ∷ Producer_ DOM.Event
-onSubmit_ = makeProducer_ Types.OnSubmit
+onSubmit_ = makeProducer_ I.OnSubmit
 
 onTransitionEnd ∷ Producer DOM.Event
-onTransitionEnd = makeProducer Types.OnTransitionEnd
+onTransitionEnd = makeProducer I.OnTransitionEnd
 
 onTransitionEnd_ ∷ Producer_ DOM.Event
-onTransitionEnd_ = makeProducer_ Types.OnTransitionEnd
+onTransitionEnd_ = makeProducer_ I.OnTransitionEnd

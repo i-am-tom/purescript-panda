@@ -10,30 +10,33 @@ import Data.Either          (Either(..))
 import Data.Foldable        (for_)
 import Data.Map             as Map
 import Data.Maybe           (Maybe(..))
-import Panda.Internal       as Types
+import Panda.Internal       as I
 
 import Prelude
 
+-- | The system for properties is slightly more complicated as we distinguish
+-- | between those who _produce events_ and those who don't. For this reason,
+-- | our map has a sum type as a key.
 type PropertySystem eff update state event
   = Map.Map
-      (Either Types.Producer String)
-      (Types.EventSystem eff update state event)
+      (Either I.Producer String)
+      (I.EventSystem eff update state event)
 
 -- | Given an element, and a set of update instructions, perform the update and
 -- | reconfigure the event systems.
 execute
   ∷ ∀ eff update state event
   . { element  ∷ DOM.Element
-    , systems  ∷ PropertySystem (Types.FX eff) update state event
-    , render   ∷ Types.Property event
-               → Eff (Types.FX eff)
-                   ( Types.EventSystem (Types.FX eff) update state event
+    , systems  ∷ PropertySystem (I.FX eff) update state event
+    , render   ∷ I.Property event
+               → Eff (I.FX eff)
+                   ( I.EventSystem (I.FX eff) update state event
                    )
-    , update   ∷ Types.PropertyUpdate event
+    , update   ∷ I.PropertyUpdate event
     }
-  → Eff (Types.FX eff)
-      { systems ∷ PropertySystem (Types.FX eff) update state event
-      , hasNewItem ∷ Maybe (Either Types.Producer String)
+  → Eff (I.FX eff)
+      { systems ∷ PropertySystem (I.FX eff) update state event
+      , hasNewItem ∷ Maybe (Either I.Producer String)
       }
 
 execute { element, systems, render, update }
@@ -41,7 +44,7 @@ execute { element, systems, render, update }
       Left producer →
         case producer of
           Algebra.Add key onEvent → do
-            system ← render (Types.PropertyProducer { key, onEvent })
+            system ← render (I.PropertyProducer { key, onEvent })
 
             pure
               { systems: Map.insert (Left key) system systems
@@ -49,10 +52,10 @@ execute { element, systems, render, update }
               }
 
           Algebra.Delete key → do
-            DOM.removeAttribute (Types.producerToString key) element
+            DOM.removeAttribute (I.producerToString key) element
 
             case Map.lookup (Left key) systems of
-              Just (Types.DynamicSystem { cancel }) →
+              Just (I.DynamicSystem { cancel }) →
                 cancel
 
               _ →
@@ -65,10 +68,10 @@ execute { element, systems, render, update }
 
           Algebra.Empty → do
             for_ systems case _ of
-              Types.DynamicSystem { cancel } →
+              I.DynamicSystem { cancel } →
                 cancel
 
-              Types.StaticSystem →
+              I.StaticSystem →
                 pure unit
 
             pure
@@ -78,7 +81,7 @@ execute { element, systems, render, update }
 
           Algebra.Rename from to → do
             case Map.lookup (Left to) systems of
-              Just (Types.DynamicSystem { cancel }) →
+              Just (I.DynamicSystem { cancel }) →
                 cancel
 
               _ →
@@ -104,7 +107,7 @@ execute { element, systems, render, update }
       Right static →
         case static of
           Algebra.Add key value → do
-            system ← render (Types.PropertyFixed { key, value })
+            system ← render (I.PropertyFixed { key, value })
 
             pure
               { systems: Map.insert (Right key) system systems
@@ -113,7 +116,7 @@ execute { element, systems, render, update }
 
           Algebra.Delete key → do
             case Map.lookup (Right key) systems of
-              Just (Types.DynamicSystem { cancel }) →
+              Just (I.DynamicSystem { cancel }) →
                 cancel
 
               _ →
@@ -126,10 +129,10 @@ execute { element, systems, render, update }
 
           Algebra.Empty → do
             for_ systems case _ of
-              Types.DynamicSystem { cancel } →
+              I.DynamicSystem { cancel } →
                 cancel
 
-              Types.StaticSystem →
+              I.StaticSystem →
                 pure unit
 
             pure

@@ -8,15 +8,17 @@ import DOM.Node.NodeList    (toArray) as DOM
 import DOM.Node.Types       (Node) as DOM
 import Data.Foldable        (for_)
 import Data.Maybe           (Maybe(..))
-import Panda.Internal       as Types
+import Panda.Internal       as I
 
 import Prelude
 
+-- | The type of a renderer from Component DSL to HTML. Note that, as a
+-- | byproduct, this also produces the event system for wiring up the node.
 type Renderer eff update state event
-  = Types.Component eff update state event
+  = I.Component eff update state event
   → Eff eff
       { element ∷ DOM.Node
-      , system  ∷ Types.EventSystem eff update state event
+      , system  ∷ I.EventSystem eff update state event
       }
 
 -- | Given an element, and a set of update instructions, perform the update and
@@ -24,13 +26,13 @@ type Renderer eff update state event
 execute
   ∷ ∀ eff update state event
   . { parent   ∷ DOM.Node
-    , systems  ∷ Array (Types.EventSystem (Types.FX eff) update state event)
-    , render   ∷ Renderer (Types.FX eff) update state event
-    , update   ∷ Types.ComponentUpdate (Types.FX eff) update state event
+    , systems  ∷ Array (I.EventSystem (I.FX eff) update state event)
+    , render   ∷ Renderer (I.FX eff) update state event
+    , update   ∷ I.ComponentUpdate (I.FX eff) update state event
     }
-  → Eff (Types.FX eff)
+  → Eff (I.FX eff)
       { systems ∷ Array
-          ( Types.EventSystem (Types.FX eff) update state event
+          ( I.EventSystem (I.FX eff) update state event
           )
       , hasNewItem ∷ Maybe Int
       }
@@ -52,10 +54,10 @@ execute { parent, systems, render, update } = do
             _ ← DOM.removeChild element parent
 
             case system of
-              Types.DynamicSystem { cancel } →
+              I.DynamicSystem { cancel } →
                 cancel
 
-              Types.StaticSystem →
+              I.StaticSystem →
                 pure unit
 
             pure
@@ -72,10 +74,10 @@ execute { parent, systems, render, update } = do
       -- Remove all the children from the DOM node and run all the cancellers.
       Algebra.Empty → do
         for_ systems case _ of
-          Types.DynamicSystem { cancel } →
+          I.DynamicSystem { cancel } →
             cancel
 
-          Types.StaticSystem →
+          I.StaticSystem →
             pure unit
 
         for_ children \node → do
@@ -155,10 +157,10 @@ execute { parent, systems, render, update } = do
         case result of
           Just { elements, eventSystems } → do
             case eventSystems.last of
-              Types.DynamicSystem { cancel } →
+              I.DynamicSystem { cancel } →
                 cancel
 
-              Types.StaticSystem →
+              I.StaticSystem →
                 pure unit
 
             _ ← DOM.removeChild elements.last parent
@@ -194,10 +196,10 @@ execute { parent, systems, render, update } = do
         case result of
           Just { elements, eventSystems } → do
             case eventSystems.head of
-              Types.DynamicSystem { cancel } →
+              I.DynamicSystem { cancel } →
                 cancel
 
-              Types.StaticSystem →
+              I.StaticSystem →
                 pure unit
 
             _ ← DOM.removeChild elements.head parent
