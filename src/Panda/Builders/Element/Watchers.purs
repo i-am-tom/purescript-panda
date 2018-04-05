@@ -71,7 +71,7 @@ renderAlways' renderer
 -- | Given an update and state, maybe produce a value. If a value _is_
 -- | produced, use this value to render a component. As with the other render
 -- | methods, this will trigger a full re-render.
-renderWhen
+updateWhen
   ∷ ∀ eff update state event value
   . ( { update ∷ update, state ∷ state }
     → Maybe value
@@ -79,7 +79,7 @@ renderWhen
   → (value → Component eff update state event)
   → Children eff update state event
 
-renderWhen predicate renderer
+updateWhen predicate renderer
   = DynamicChildren \update →
       case predicate update of
         Just details →

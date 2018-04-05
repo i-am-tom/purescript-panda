@@ -40,11 +40,7 @@ type Queen = { name ∷ String, age ∷ Int, origin ∷ String, season ∷ Int }
 data Update eff
   = FilterTable String
   | RenderTable
-  | UpdateTableRows
-      ( Array
-          ( PH.ComponentUpdate eff (Update eff) State Event
-          )
-      )
+  | UpdateTableRows (Array (PH.ComponentUpdate eff (Update eff) State Event))
 
 -- | The state of this application. Note we don't include the search string, as
 -- | it can exist within the updates alone.
@@ -71,32 +67,16 @@ headers = [ Name, Age, Origin, Season ]
 makeTableHeader ∷ ∀ eff. Header → PH.Component eff (Update eff) State Event
 makeTableHeader header
   = PH.strong'
-      do
-        PP.DynamicProperties \{ update, state } →
-          case update of
-            UpdateTableRows _ →
-              let
-                modifier
-                  = if state.isAscending
-                      then "highlight--ascending"
-                      else "highlight--descending"
+      [ PP.when (\{ state } → state.header /= header) \{ state } →
+          PP.className if state.isAscending
+            then "highlight--ascending"
+            else "highlight--descending"
+      ]
 
-              in if header /= state.header
-                then [ PAlgebra.Delete "class" ]
-                else [ PAlgebra.Add $ PP.className ("highlight " <> modifier) ]
+      [ PH.text (show header)
+      ]
 
-            _ →
-              []
-
-      do
-        PH.StaticChildren
-          [ PH.text (show header)
-          ]
-
-matches
-  ∷ String
-  → Queen
-  → Boolean
+matches ∷ String → Queen → Boolean
 matches search { name, age, origin, season }
   = any (contains (Pattern (toLower search)))
       [ toLower name
@@ -106,44 +86,31 @@ matches search { name, age, origin, season }
       ]
 
 -- | Render a single row in the data table.
-renderRow
-  ∷ ∀ eff state event
-  . Queen
-  → PH.Component eff (Update eff) state event
+renderRow ∷ ∀ eff state event. Queen → PH.Component eff (Update eff) state event
 renderRow queen@{ name, age, origin, season }
-  = PH.tr'
-      do
-        PP.DynamicProperties \{ update, state } →
+  = PH.tr
+      [ PP.className "hidden" `PP.renderWhen` \{ update } →
           case update of
-            FilterTable str →
-              if str `matches` queen
-                then
-                  [ PAlgebra.Delete "class"
-                  ]
+            FilterTable str → str `matches` queen
+            _               → false
+      ]
 
-                else
-                  [ PAlgebra.Add $ PP.PropertyFixed
-                      { key: "class"
-                      , value: "hidden"
-                      }
-                  ]
+      [ PH.td_
+          [ PH.text name
+          ]
 
-            _ →
-              []
+      , PH.td_
+          [ PH.text age'
+          ]
 
-      do
-        PH.DynamicChildren \{ update, state } →
-          case update of
-            RenderTable →
-              [ CAlgebra.Empty
-              , CAlgebra.Push (PH.td_ [ PH.text name ])
-              , CAlgebra.Push (PH.td_ [ PH.text age' ])
-              , CAlgebra.Push (PH.td_ [ PH.text origin ])
-              , CAlgebra.Push (PH.td_ [ PH.text season' ])
-              ]
+      , PH.td_
+          [ PH.text origin
+          ]
 
-            _ →
-              []
+      , PH.td_
+          [ PH.text season'
+          ]
+      ]
   where
     age'    = show age
     season' = show season
