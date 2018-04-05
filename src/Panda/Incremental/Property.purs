@@ -10,7 +10,7 @@ import Data.Either          (Either(..))
 import Data.Foldable        (for_)
 import Data.Map             as Map
 import Data.Maybe           (Maybe(..))
-import Panda.Internal.Types as Types
+import Panda.Internal       as Types
 
 import Prelude
 

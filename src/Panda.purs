@@ -13,8 +13,8 @@ import DOM.Node.Types       (Node)
 import Data.Maybe           (Maybe)
 import Data.Traversable     (traverse)
 import Panda.Bootstrap      (bootstrap)
-import Panda.Internal.Types (Application, FX, Updater) as ExportedTypes
-import Panda.Internal.Types as Types
+import Panda.Internal       (Application, FX, Updater) as ExportedTypes
+import Panda.Internal       (Application, EventSystem, FX)
 
 import Prelude
 
@@ -27,9 +27,8 @@ import Prelude
 -- | successful.
 runApplication
   ∷ ∀ eff update state event
-  . Types.Application (Types.FX eff) update state event
-  → Eff (Types.FX eff)
-      (Maybe (Types.EventSystem (Types.FX eff) update state event))
+  . Application (FX eff) update state event
+  → Eff (FX eff) (Maybe (EventSystem (FX eff) update state event))
 
 runApplication configuration
     = window
@@ -43,9 +42,9 @@ runApplication configuration
 -- | directly into the application.
 runApplicationIn
   ∷ ∀ eff update state event
-  . Types.Application (Types.FX eff) update state event
+  . Application (FX eff) update state event
   → Node
-  → Eff (Types.FX eff) (Types.EventSystem (Types.FX eff) update state event)
+  → Eff (FX eff) (EventSystem (FX eff) update state event)
 
 runApplicationIn configuration node
     = window

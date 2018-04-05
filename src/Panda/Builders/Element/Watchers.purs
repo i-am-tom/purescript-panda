@@ -9,12 +9,12 @@ module Panda.Builders.Element.Watchers
   , sortWith
   ) where
 
-import Data.Algebra.Array   as Algebra
-import Data.Array           as Array
-import Data.Function        (on)
-import Data.Maybe           (Maybe(..), fromJust)
-import Panda.Internal.Types as Types
-import Partial.Unsafe       (unsafePartial)
+import Data.Algebra.Array as Algebra
+import Data.Array         as Array
+import Data.Function      (on)
+import Data.Maybe         (Maybe(..), fromJust)
+import Panda.Internal     (Children(..),  Component, ComponentUpdate)
+import Partial.Unsafe     (unsafePartial)
 
 import Prelude
 
@@ -34,8 +34,8 @@ than the greater possibilities :)
 -- | rerender.
 render'
   ∷ ∀ eff update state event
-  . Types.Component eff update state event
-  → Array (Types.ComponentUpdate eff update state event)
+  . Component eff update state event
+  → Array (ComponentUpdate eff update state event)
 
 render' component
   = [ Algebra.Empty
@@ -49,12 +49,12 @@ render' component
 renderAlways
   ∷ ∀ eff update state event
   . ( { update ∷ update, state ∷ state }
-    → Types.Component eff update state event
+    → Component eff update state event
     )
-  → Types.Children eff update state event
+  → Children eff update state event
 
 renderAlways renderer
-  = Types.DynamicChildren (render' <<< renderer)
+  = DynamicChildren (render' <<< renderer)
 
 -- | Regardless of the update, re-render with no interest in what the update
 -- | was. Again, this will be a real performance-killer in larger applications,
@@ -62,8 +62,8 @@ renderAlways renderer
 -- | something needs rethinking.
 renderAlways'
   ∷ ∀ eff update state event
-  . (state → Types.Component eff update state event)
-  → Types.Children eff update state event
+  . (state → Component eff update state event)
+  → Children eff update state event
 
 renderAlways' renderer
   = renderAlways (renderer <<< _.state)
@@ -76,11 +76,11 @@ renderWhen
   . ( { update ∷ update, state ∷ state }
     → Maybe value
     )
-  → (value → Types.Component eff update state event)
-  → Types.Children eff update state event
+  → (value → Component eff update state event)
+  → Children eff update state event
 
 renderWhen predicate renderer
-  = Types.DynamicChildren \update →
+  = DynamicChildren \update →
       case predicate update of
         Just details →
           render' (renderer details)
@@ -95,11 +95,11 @@ renderOnlyWhen
   . ( { update ∷ update, state ∷ state }
     → Maybe value
     )
-  → (value → Types.Component eff update state event)
-  → Types.Children eff update state event
+  → (value → Component eff update state event)
+  → Children eff update state event
 
 renderOnlyWhen predicate renderer
-  = Types.DynamicChildren \update →
+  = DynamicChildren \update →
       case predicate update of
         Just details →
           render' (renderer details)
@@ -124,7 +124,7 @@ filter
   . (focus → Boolean)
   → Array focus
   → { state ∷ Array focus
-    , moves ∷ Array (Types.ComponentUpdate eff update state event)
+    , moves ∷ Array (ComponentUpdate eff update state event)
     }
 
 filter predicate focus
@@ -137,7 +137,7 @@ sortBy
   . (focus → focus → Ordering)
   → Array focus
   → { state ∷ Array focus
-    , moves ∷ Array (Types.ComponentUpdate eff update state event)
+    , moves ∷ Array (ComponentUpdate eff update state event)
     }
 
 sortBy comparison focus
@@ -160,7 +160,7 @@ sortWith
   ⇒ (focus → sortableType)
   → Array focus
   → { state ∷ Array focus
-    , moves ∷ Array (Types.ComponentUpdate eff update state event)
+    , moves ∷ Array (ComponentUpdate eff update state event)
     }
 
 sortWith comparison
@@ -171,7 +171,7 @@ sort
   . Ord focus
   ⇒ Array focus
   → { state ∷ Array focus
-    , moves ∷ Array (Types.ComponentUpdate eff update state event)
+    , moves ∷ Array (ComponentUpdate eff update state event)
     }
 
 sort

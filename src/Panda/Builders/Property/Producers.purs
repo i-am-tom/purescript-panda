@@ -61,14 +61,14 @@ module Panda.Builders.Property.Producers
   ) where
 
 import Control.Monad.Except (runExcept)
-import DOM.Event.Types (Event, FocusEvent, KeyboardEvent, MouseEvent) as DOM
+import DOM.Event.Types      (Event, FocusEvent, KeyboardEvent, MouseEvent) as DOM
 import DOM.HTML.Event.Types (DragEvent, ErrorEvent) as DOM
-import Data.Either (either)
-import Data.Foreign (readInt, readString, toForeign) as F
-import Data.Foreign.Index (readProp) as F
-import Data.Maybe (Maybe(..))
-import Panda.Internal.Types as Types
-import Unsafe.Coerce (unsafeCoerce)
+import Data.Either          (either)
+import Data.Foreign         (readInt, readString, toForeign) as F
+import Data.Foreign.Index   (readProp) as F
+import Data.Maybe           (Maybe(..))
+import Panda.Internal       as Types
+import Unsafe.Coerce        (unsafeCoerce)
 
 import Prelude
 

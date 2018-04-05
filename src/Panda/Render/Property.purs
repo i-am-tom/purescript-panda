@@ -15,7 +15,7 @@ import Data.Map                   as Map
 import Data.Maybe                 (Maybe(..))
 import FRP.Event                  (Event, create, subscribe) as FRP
 import Panda.Incremental.Property (execute)
-import Panda.Internal.Types       as Types
+import Panda.Internal             as Types
 
 import Prelude
 

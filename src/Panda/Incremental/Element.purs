@@ -8,7 +8,7 @@ import DOM.Node.NodeList    (toArray) as DOM
 import DOM.Node.Types       (Node) as DOM
 import Data.Foldable        (for_)
 import Data.Maybe           (Maybe(..))
-import Panda.Internal.Types as Types
+import Panda.Internal       as Types
 
 import Prelude
 

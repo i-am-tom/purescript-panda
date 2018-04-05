@@ -1,10 +1,10 @@
 module Panda.Builders.Property.Watchers where
 
-import Panda.Internal.Types as Types
+import Panda.Internal
 
 type Renderer update state event
   = { state ∷ state, update ∷ update }
-  → Array (Types.PropertyUpdate event)
+  → Array (PropertyUpdate event)
 
 -- -- | General constructor for property watches. Kind of the "advanced mode" -
 -- -- | use the other functions if possible.

@@ -12,6 +12,7 @@ import Control.Monad.Eff.Class   (liftEff)
 import Control.Monad.Eff.Console (CONSOLE, logShow)
 import Control.Plus              (empty)
 import Data.Algebra.Array        as CAlgebra
+import Data.Algebra.Map          as PAlgebra
 import Data.Array                (sortWith)
 import Data.Either               (either)
 import Data.Foldable             (any)
@@ -21,8 +22,8 @@ import Data.Generic.Rep.Show     (genericShow)
 import Data.Maybe                (Maybe(..))
 import Data.Monoid               (mempty)
 import Data.String               (Pattern(..), contains, toLower)
-import Network.HTTP.Affjax       (AJAX, get)
 import Simple.JSON               (readJSON)
+import Network.HTTP.Affjax       (AJAX, get)
 
 import Panda                     as P
 import Panda.HTML                as PH
@@ -74,11 +75,15 @@ makeTableHeader header
         PP.DynamicProperties \{ update, state } →
           case update of
             UpdateTableRows _ →
-              PP.renderAlways
-                [ PP.className if state.isAscending
-                    then "highlight highlight--ascending"
-                    else "highlight highlight--descending"
-                ]
+              let
+                modifier
+                  = if state.isAscending
+                      then "highlight--ascending"
+                      else "highlight--descending"
+
+              in if header /= state.header
+                then [ PAlgebra.Delete "class" ]
+                else [ PAlgebra.Add $ PP.className ("highlight " <> modifier) ]
 
             _ →
               []
@@ -113,11 +118,11 @@ renderRow queen@{ name, age, origin, season }
             FilterTable str →
               if str `matches` queen
                 then
-                  [ PP.PropertyDelete "class"
+                  [ PAlgebra.Delete "class"
                   ]
 
                 else
-                  [ PP.PropertyAdd $ PP.PropertyFixed
+                  [ PAlgebra.Add $ PP.PropertyFixed
                       { key: "class"
                       , value: "hidden"
                       }

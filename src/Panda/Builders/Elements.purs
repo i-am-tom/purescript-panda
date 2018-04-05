@@ -1,51 +1,51 @@
 module Panda.Builders.Elements
   ( module Panda.Builders.Elements
-  , module Panda.Builders.Element.Watchers
+  , module Watchers
   ) where
 
-import Panda.Builders.Element.Watchers
-import Panda.Internal.Types as Types
+import Panda.Builders.Element.Watchers as Watchers
+import Panda.Internal
 
 type Element
   = ∀ eff update state event
-  . Types.Properties     update state event
-  → Types.Children   eff update state event
-  → Types.Component  eff update state event
+  . Properties     update state event
+  → Children   eff update state event
+  → Component  eff update state event
 
 type StaticElement
   = ∀ eff update state event
-  . Array (Types.Property                   event)
-  → Array (Types.Component eff update state event)
-  → Types.Component eff update state event
+  . Array (Property                   event)
+  → Array (Component eff update state event)
+  → Component eff update state event
 
 type ElementNoProperties
   = ∀ eff update state event
-  . Types.Children  eff update state event
-  → Types.Component eff update state event
+  . Children  eff update state event
+  → Component eff update state event
 
 type StaticElementNoProperties
   = ∀ eff update state event
-  . Array (Types.Component eff update state event)
-  → Types.Component eff update state event
+  . Array (Component eff update state event)
+  → Component eff update state event
 
 type ElementSelfClosing
   = ∀ eff update state event
-  . Types.Properties update state event
-  → Types.Component eff update state event
+  . Properties update state event
+  → Component eff update state event
 
 type StaticElementSelfClosing
   = ∀ eff update state event
-  . Array (Types.Property event)
-  → Types.Component eff update state event
+  . Array (Property event)
+  → Component eff update state event
 
 type StaticElementSelfClosingNoProperties
   = ∀ eff update state event
-  . Types.Component eff update state event
+  . Component eff update state event
 
 
 make' ∷ String → Element
 make' tagName properties children
-  = Types.ComponentElement
+  = ComponentElement
       { tagName
       , properties
       , children
@@ -54,12 +54,12 @@ make' tagName properties children
 make ∷ String → StaticElement
 make tagName properties children
   = make' tagName
-      (Types.StaticProperties properties)
-      (Types.StaticChildren children)
+      (StaticProperties properties)
+      (StaticChildren children)
 
 make'_ ∷ String → ElementNoProperties
 make'_ tagName children
-  = make' tagName (Types.StaticProperties []) children
+  = make' tagName (StaticProperties []) children
 
 make_ ∷ String → StaticElementNoProperties
 make_ tagName children
@@ -75,7 +75,7 @@ a_ ∷ StaticElementNoProperties
 a_ = a []
 
 a'_ ∷ ElementNoProperties
-a'_ = a' (Types.StaticProperties [])
+a'_ = a' (StaticProperties [])
 
 abbr ∷ StaticElement
 abbr = make "abbr"
@@ -87,7 +87,7 @@ abbr_ ∷ StaticElementNoProperties
 abbr_ = abbr []
 
 abbr'_ ∷ ElementNoProperties
-abbr'_ = abbr' (Types.StaticProperties [])
+abbr'_ = abbr' (StaticProperties [])
 
 acronym ∷ StaticElement
 acronym = make "acronym"
@@ -99,7 +99,7 @@ acronym_ ∷ StaticElementNoProperties
 acronym_ = acronym []
 
 acronym'_ ∷ ElementNoProperties
-acronym'_ = acronym' (Types.StaticProperties [])
+acronym'_ = acronym' (StaticProperties [])
 
 address ∷ StaticElement
 address = make "address"
@@ -111,7 +111,7 @@ address_ ∷ StaticElementNoProperties
 address_ = address []
 
 address'_ ∷ ElementNoProperties
-address'_ = address' (Types.StaticProperties [])
+address'_ = address' (StaticProperties [])
 
 applet ∷ StaticElement
 applet = make "applet"
@@ -123,13 +123,13 @@ applet_ ∷ StaticElementNoProperties
 applet_ = applet []
 
 applet'_ ∷ ElementNoProperties
-applet'_ = applet' (Types.StaticProperties [])
+applet'_ = applet' (StaticProperties [])
 
 area ∷ StaticElementSelfClosing
 area props = make "area" props []
 
 area' ∷ ElementSelfClosing
-area' props = make' "area" props (Types.StaticChildren [])
+area' props = make' "area" props (StaticChildren [])
 
 area_ ∷ StaticElementSelfClosingNoProperties
 area_ = area []
@@ -144,7 +144,7 @@ article_ ∷ StaticElementNoProperties
 article_ = article []
 
 article'_ ∷ ElementNoProperties
-article'_ = article' (Types.StaticProperties [])
+article'_ = article' (StaticProperties [])
 
 aside ∷ StaticElement
 aside = make "aside"
@@ -156,7 +156,7 @@ aside_ ∷ StaticElementNoProperties
 aside_ = aside []
 
 aside'_ ∷ ElementNoProperties
-aside'_ = aside' (Types.StaticProperties [])
+aside'_ = aside' (StaticProperties [])
 
 audio ∷ StaticElement
 audio = make "audio"
@@ -168,7 +168,7 @@ audio_ ∷ StaticElementNoProperties
 audio_ = audio []
 
 audio'_ ∷ ElementNoProperties
-audio'_ = audio' (Types.StaticProperties [])
+audio'_ = audio' (StaticProperties [])
 
 b ∷ StaticElement
 b = make "b"
@@ -180,13 +180,13 @@ b_ ∷ StaticElementNoProperties
 b_ = b []
 
 b'_ ∷ ElementNoProperties
-b'_ = b' (Types.StaticProperties [])
+b'_ = b' (StaticProperties [])
 
 base ∷ StaticElementSelfClosing
 base props = make "base" props []
 
 base' ∷ ElementSelfClosing
-base' props = make' "base" props (Types.StaticChildren [])
+base' props = make' "base" props (StaticChildren [])
 
 base_ ∷ StaticElementSelfClosingNoProperties
 base_ = base []
@@ -201,7 +201,7 @@ basefont_ ∷ StaticElementNoProperties
 basefont_ = basefont []
 
 basefont'_ ∷ ElementNoProperties
-basefont'_ = basefont' (Types.StaticProperties [])
+basefont'_ = basefont' (StaticProperties [])
 
 bdi ∷ StaticElement
 bdi = make "bdi"
@@ -213,7 +213,7 @@ bdi_ ∷ StaticElementNoProperties
 bdi_ = bdi []
 
 bdi'_ ∷ ElementNoProperties
-bdi'_ = bdi' (Types.StaticProperties [])
+bdi'_ = bdi' (StaticProperties [])
 
 bdo ∷ StaticElement
 bdo = make "bdo"
@@ -225,7 +225,7 @@ bdo_ ∷ StaticElementNoProperties
 bdo_ = bdo []
 
 bdo'_ ∷ ElementNoProperties
-bdo'_ = bdo' (Types.StaticProperties [])
+bdo'_ = bdo' (StaticProperties [])
 
 big ∷ StaticElement
 big = make "big"
@@ -237,7 +237,7 @@ big_ ∷ StaticElementNoProperties
 big_ = big []
 
 big'_ ∷ ElementNoProperties
-big'_ = big' (Types.StaticProperties [])
+big'_ = big' (StaticProperties [])
 
 blockquote ∷ StaticElement
 blockquote = make "blockquote"
@@ -249,13 +249,13 @@ blockquote_ ∷ StaticElementNoProperties
 blockquote_ = blockquote []
 
 blockquote'_ ∷ ElementNoProperties
-blockquote'_ = blockquote' (Types.StaticProperties [])
+blockquote'_ = blockquote' (StaticProperties [])
 
 br ∷ StaticElementSelfClosing
 br props = make "br" props []
 
 br' ∷ ElementSelfClosing
-br' props = make' "br" props (Types.StaticChildren [])
+br' props = make' "br" props (StaticChildren [])
 
 br_ ∷ StaticElementSelfClosingNoProperties
 br_ = br []
@@ -270,7 +270,7 @@ button_ ∷ StaticElementNoProperties
 button_ = button []
 
 button'_ ∷ ElementNoProperties
-button'_ = button' (Types.StaticProperties [])
+button'_ = button' (StaticProperties [])
 
 canvas ∷ StaticElement
 canvas = make "canvas"
@@ -282,7 +282,7 @@ canvas_ ∷ StaticElementNoProperties
 canvas_ = canvas []
 
 canvas'_ ∷ ElementNoProperties
-canvas'_ = canvas' (Types.StaticProperties [])
+canvas'_ = canvas' (StaticProperties [])
 
 caption ∷ StaticElement
 caption = make "caption"
@@ -294,7 +294,7 @@ caption_ ∷ StaticElementNoProperties
 caption_ = caption []
 
 caption'_ ∷ ElementNoProperties
-caption'_ = caption' (Types.StaticProperties [])
+caption'_ = caption' (StaticProperties [])
 
 center ∷ StaticElement
 center = make "center"
@@ -315,7 +315,7 @@ cite_ ∷ StaticElementNoProperties
 cite_ = cite []
 
 cite'_ ∷ ElementNoProperties
-cite'_ = cite' (Types.StaticProperties [])
+cite'_ = cite' (StaticProperties [])
 
 code ∷ StaticElement
 code = make "code"
@@ -330,7 +330,7 @@ col ∷ StaticElementSelfClosing
 col props = make "col" props []
 
 col' ∷ ElementSelfClosing
-col' props = make' "col" props (Types.StaticChildren [])
+col' props = make' "col" props (StaticChildren [])
 
 col_ ∷ StaticElementSelfClosingNoProperties
 col_ = col []
@@ -345,13 +345,13 @@ colgroup_ ∷ StaticElementNoProperties
 colgroup_ = colgroup []
 
 colgroup'_ ∷ ElementNoProperties
-colgroup'_ = colgroup' (Types.StaticProperties [])
+colgroup'_ = colgroup' (StaticProperties [])
 
 command ∷ StaticElementSelfClosing
 command props = make "command" props []
 
 command' ∷ ElementSelfClosing
-command' props = make' "command" props (Types.StaticChildren [])
+command' props = make' "command" props (StaticChildren [])
 
 command_ ∷ StaticElementSelfClosingNoProperties
 command_ = command []
@@ -366,7 +366,7 @@ datalist_ ∷ StaticElementNoProperties
 datalist_ = datalist []
 
 datalist'_ ∷ ElementNoProperties
-datalist'_ = datalist' (Types.StaticProperties [])
+datalist'_ = datalist' (StaticProperties [])
 
 dd ∷ StaticElement
 dd = make "dd"
@@ -378,7 +378,7 @@ dd_ ∷ StaticElementNoProperties
 dd_ = dd []
 
 dd'_ ∷ ElementNoProperties
-dd'_ = dd' (Types.StaticProperties [])
+dd'_ = dd' (StaticProperties [])
 
 del ∷ StaticElement
 del = make "del"
@@ -390,7 +390,7 @@ del_ ∷ StaticElementNoProperties
 del_ = del []
 
 del'_ ∷ ElementNoProperties
-del'_ = del' (Types.StaticProperties [])
+del'_ = del' (StaticProperties [])
 
 details ∷ StaticElement
 details = make "details"
@@ -402,7 +402,7 @@ details_ ∷ StaticElementNoProperties
 details_ = details []
 
 details'_ ∷ ElementNoProperties
-details'_ = details' (Types.StaticProperties [])
+details'_ = details' (StaticProperties [])
 
 dfn ∷ StaticElement
 dfn = make "dfn"
@@ -414,7 +414,7 @@ dfn_ ∷ StaticElementNoProperties
 dfn_ = dfn []
 
 dfn'_ ∷ ElementNoProperties
-dfn'_ = dfn' (Types.StaticProperties [])
+dfn'_ = dfn' (StaticProperties [])
 
 dialog ∷ StaticElement
 dialog = make "dialog"
@@ -426,7 +426,7 @@ dialog_ ∷ StaticElementNoProperties
 dialog_ = dialog []
 
 dialog'_ ∷ ElementNoProperties
-dialog'_ = dialog' (Types.StaticProperties [])
+dialog'_ = dialog' (StaticProperties [])
 
 dir ∷ StaticElement
 dir = make "dir"
@@ -438,7 +438,7 @@ dir_ ∷ StaticElementNoProperties
 dir_ = dir []
 
 dir'_ ∷ ElementNoProperties
-dir'_ = dir' (Types.StaticProperties [])
+dir'_ = dir' (StaticProperties [])
 
 div ∷ StaticElement
 div = make "div"
@@ -450,7 +450,7 @@ div_ ∷ StaticElementNoProperties
 div_ = div []
 
 div'_ ∷ ElementNoProperties
-div'_ = div' (Types.StaticProperties [])
+div'_ = div' (StaticProperties [])
 
 dl ∷ StaticElement
 dl = make "dl"
@@ -462,7 +462,7 @@ dl_ ∷ StaticElementNoProperties
 dl_ = dl []
 
 dl'_ ∷ ElementNoProperties
-dl'_ = dl' (Types.StaticProperties [])
+dl'_ = dl' (StaticProperties [])
 
 dt ∷ StaticElement
 dt = make "dt"
@@ -474,7 +474,7 @@ dt_ ∷ StaticElementNoProperties
 dt_ = dt []
 
 dt'_ ∷ ElementNoProperties
-dt'_ = dt' (Types.StaticProperties [])
+dt'_ = dt' (StaticProperties [])
 
 em ∷ StaticElement
 em = make "em"
@@ -486,13 +486,13 @@ em_ ∷ StaticElementNoProperties
 em_ = em []
 
 em'_ ∷ ElementNoProperties
-em'_ = em' (Types.StaticProperties [])
+em'_ = em' (StaticProperties [])
 
 embed ∷ StaticElementSelfClosing
 embed props = make "embed" props []
 
 embed' ∷ ElementSelfClosing
-embed' props = make' "embed" props (Types.StaticChildren [])
+embed' props = make' "embed" props (StaticChildren [])
 
 embed_ ∷ StaticElementSelfClosingNoProperties
 embed_ = embed []
@@ -507,7 +507,7 @@ fieldset_ ∷ StaticElementNoProperties
 fieldset_ = fieldset []
 
 fieldset'_ ∷ ElementNoProperties
-fieldset'_ = fieldset' (Types.StaticProperties [])
+fieldset'_ = fieldset' (StaticProperties [])
 
 figcaption ∷ StaticElement
 figcaption = make "figcaption"
@@ -519,7 +519,7 @@ figcaption_ ∷ StaticElementNoProperties
 figcaption_ = figcaption []
 
 figcaption'_ ∷ ElementNoProperties
-figcaption'_ = figcaption' (Types.StaticProperties [])
+figcaption'_ = figcaption' (StaticProperties [])
 
 figure ∷ StaticElement
 figure = make "figure"
@@ -531,7 +531,7 @@ figure_ ∷ StaticElementNoProperties
 figure_ = figure []
 
 figure'_ ∷ ElementNoProperties
-figure'_ = figure' (Types.StaticProperties [])
+figure'_ = figure' (StaticProperties [])
 
 font ∷ StaticElement
 font = make "font"
@@ -543,7 +543,7 @@ font_ ∷ StaticElementNoProperties
 font_ = font []
 
 font'_ ∷ ElementNoProperties
-font'_ = font' (Types.StaticProperties [])
+font'_ = font' (StaticProperties [])
 
 footer ∷ StaticElement
 footer = make "footer"
@@ -555,7 +555,7 @@ footer_ ∷ StaticElementNoProperties
 footer_ = footer []
 
 footer'_ ∷ ElementNoProperties
-footer'_ = footer' (Types.StaticProperties [])
+footer'_ = footer' (StaticProperties [])
 
 form ∷ StaticElement
 form = make "form"
@@ -567,7 +567,7 @@ form_ ∷ StaticElementNoProperties
 form_ = form []
 
 form'_ ∷ ElementNoProperties
-form'_ = form' (Types.StaticProperties [])
+form'_ = form' (StaticProperties [])
 
 frame ∷ StaticElement
 frame = make "frame"
@@ -579,7 +579,7 @@ frame_ ∷ StaticElementNoProperties
 frame_ = frame []
 
 frame'_ ∷ ElementNoProperties
-frame'_ = frame' (Types.StaticProperties [])
+frame'_ = frame' (StaticProperties [])
 
 frameset ∷ StaticElement
 frameset = make "frameset"
@@ -591,7 +591,7 @@ frameset_ ∷ StaticElementNoProperties
 frameset_ = frameset []
 
 frameset'_ ∷ ElementNoProperties
-frameset'_ = frameset' (Types.StaticProperties [])
+frameset'_ = frameset' (StaticProperties [])
 
 h1 ∷ StaticElement
 h1 = make "h1"
@@ -603,7 +603,7 @@ h1_ ∷ StaticElementNoProperties
 h1_ = h1 []
 
 h1'_ ∷ ElementNoProperties
-h1'_ = h1' (Types.StaticProperties [])
+h1'_ = h1' (StaticProperties [])
 
 head ∷ StaticElement
 head = make "head"
@@ -615,7 +615,7 @@ head_ ∷ StaticElementNoProperties
 head_ = head []
 
 head'_ ∷ ElementNoProperties
-head'_ = head' (Types.StaticProperties [])
+head'_ = head' (StaticProperties [])
 
 header ∷ StaticElement
 header = make "header"
@@ -627,13 +627,13 @@ header_ ∷ StaticElementNoProperties
 header_ = header []
 
 header'_ ∷ ElementNoProperties
-header'_ = header' (Types.StaticProperties [])
+header'_ = header' (StaticProperties [])
 
 hr ∷ StaticElementSelfClosing
 hr props = make "hr" props []
 
 hr' ∷ ElementSelfClosing
-hr' props = make' "hr" props (Types.StaticChildren [])
+hr' props = make' "hr" props (StaticChildren [])
 
 hr_ ∷ StaticElementSelfClosingNoProperties
 hr_ = hr []
@@ -648,7 +648,7 @@ i_ ∷ StaticElementNoProperties
 i_ = i []
 
 i'_ ∷ ElementNoProperties
-i'_ = i' (Types.StaticProperties [])
+i'_ = i' (StaticProperties [])
 
 iframe ∷ StaticElement
 iframe = make "iframe"
@@ -660,13 +660,13 @@ iframe_ ∷ StaticElementNoProperties
 iframe_ = iframe []
 
 iframe'_ ∷ ElementNoProperties
-iframe'_ = iframe' (Types.StaticProperties [])
+iframe'_ = iframe' (StaticProperties [])
 
 img ∷ StaticElementSelfClosing
 img props = make "img" props []
 
 img' ∷ ElementSelfClosing
-img' props = make' "img" props (Types.StaticChildren [])
+img' props = make' "img" props (StaticChildren [])
 
 img_ ∷ StaticElementSelfClosingNoProperties
 img_ = img []
@@ -675,7 +675,7 @@ input ∷ StaticElementSelfClosing
 input props = make "input" props []
 
 input' ∷ ElementSelfClosing
-input' props = make' "input" props (Types.StaticChildren [])
+input' props = make' "input" props (StaticChildren [])
 
 input_ ∷ StaticElementSelfClosingNoProperties
 input_ = input []
@@ -690,7 +690,7 @@ ins_ ∷ StaticElementNoProperties
 ins_ = ins []
 
 ins'_ ∷ ElementNoProperties
-ins'_ = ins' (Types.StaticProperties [])
+ins'_ = ins' (StaticProperties [])
 
 kbd ∷ StaticElement
 kbd = make "kbd"
@@ -702,13 +702,13 @@ kbd_ ∷ StaticElementNoProperties
 kbd_ = kbd []
 
 kbd'_ ∷ ElementNoProperties
-kbd'_ = kbd' (Types.StaticProperties [])
+kbd'_ = kbd' (StaticProperties [])
 
 keygen ∷ StaticElementSelfClosing
 keygen props = make "kbd" props []
 
 keygen' ∷ ElementSelfClosing
-keygen' props = make' "kbd" props (Types.StaticChildren [])
+keygen' props = make' "kbd" props (StaticChildren [])
 
 keygen_ ∷ StaticElementSelfClosingNoProperties
 keygen_ = keygen []
@@ -723,7 +723,7 @@ label_ ∷ StaticElementNoProperties
 label_ = label []
 
 label'_ ∷ ElementNoProperties
-label'_ = label' (Types.StaticProperties [])
+label'_ = label' (StaticProperties [])
 
 legend ∷ StaticElement
 legend = make "legend"
@@ -735,7 +735,7 @@ legend_ ∷ StaticElementNoProperties
 legend_ = legend []
 
 legend'_ ∷ ElementNoProperties
-legend'_ = legend' (Types.StaticProperties [])
+legend'_ = legend' (StaticProperties [])
 
 li ∷ StaticElement
 li = make "li"
@@ -747,7 +747,7 @@ li_ ∷ StaticElementNoProperties
 li_ = li []
 
 li'_ ∷ ElementNoProperties
-li'_ = li' (Types.StaticProperties [])
+li'_ = li' (StaticProperties [])
 
 main ∷ StaticElement
 main = make "main"
@@ -759,7 +759,7 @@ main_ ∷ StaticElementNoProperties
 main_ = main []
 
 main'_ ∷ ElementNoProperties
-main'_ = main' (Types.StaticProperties [])
+main'_ = main' (StaticProperties [])
 
 map ∷ StaticElement
 map = make "map"
@@ -771,7 +771,7 @@ map_ ∷ StaticElementNoProperties
 map_ = map []
 
 map'_ ∷ ElementNoProperties
-map'_ = map' (Types.StaticProperties [])
+map'_ = map' (StaticProperties [])
 
 mark ∷ StaticElement
 mark = make "mark"
@@ -783,7 +783,7 @@ mark_ ∷ StaticElementNoProperties
 mark_ = mark []
 
 mark'_ ∷ ElementNoProperties
-mark'_ = mark' (Types.StaticProperties [])
+mark'_ = mark' (StaticProperties [])
 
 menu ∷ StaticElement
 menu = make "menu"
@@ -795,13 +795,13 @@ menu_ ∷ StaticElementNoProperties
 menu_ = menu []
 
 menu'_ ∷ ElementNoProperties
-menu'_ = menu' (Types.StaticProperties [])
+menu'_ = menu' (StaticProperties [])
 
 menuitem ∷ StaticElementSelfClosing
 menuitem props = make "menuitem" props []
 
 menuitem' ∷ ElementSelfClosing
-menuitem' props = make' "menuitem" props (Types.StaticChildren [])
+menuitem' props = make' "menuitem" props (StaticChildren [])
 
 menuitem_ ∷ StaticElementSelfClosingNoProperties
 menuitem_ = menuitem []
@@ -816,7 +816,7 @@ meter_ ∷ StaticElementNoProperties
 meter_ = meter []
 
 meter'_ ∷ ElementNoProperties
-meter'_ = meter' (Types.StaticProperties [])
+meter'_ = meter' (StaticProperties [])
 
 nav ∷ StaticElement
 nav = make "nav"
@@ -828,7 +828,7 @@ nav_ ∷ StaticElementNoProperties
 nav_ = nav []
 
 nav'_ ∷ ElementNoProperties
-nav'_ = nav' (Types.StaticProperties [])
+nav'_ = nav' (StaticProperties [])
 
 noframes ∷ StaticElement
 noframes = make "noframes"
@@ -840,7 +840,7 @@ noframes_ ∷ StaticElementNoProperties
 noframes_ = noframes []
 
 noframes'_ ∷ ElementNoProperties
-noframes'_ = noframes' (Types.StaticProperties [])
+noframes'_ = noframes' (StaticProperties [])
 
 noscript ∷ StaticElement
 noscript = make "noscript"
@@ -852,7 +852,7 @@ noscript_ ∷ StaticElementNoProperties
 noscript_ = noscript []
 
 noscript'_ ∷ ElementNoProperties
-noscript'_ = noscript' (Types.StaticProperties [])
+noscript'_ = noscript' (StaticProperties [])
 
 object ∷ StaticElement
 object = make "object"
@@ -864,7 +864,7 @@ object_ ∷ StaticElementNoProperties
 object_ = object []
 
 object'_ ∷ ElementNoProperties
-object'_ = object' (Types.StaticProperties [])
+object'_ = object' (StaticProperties [])
 
 ol ∷ StaticElement
 ol = make "ol"
@@ -876,7 +876,7 @@ ol_ ∷ StaticElementNoProperties
 ol_ = ol []
 
 ol'_ ∷ ElementNoProperties
-ol'_ = ol' (Types.StaticProperties [])
+ol'_ = ol' (StaticProperties [])
 
 optgroup ∷ StaticElement
 optgroup = make "optgroup"
@@ -888,7 +888,7 @@ optgroup_ ∷ StaticElementNoProperties
 optgroup_ = optgroup []
 
 optgroup'_ ∷ ElementNoProperties
-optgroup'_ = optgroup' (Types.StaticProperties [])
+optgroup'_ = optgroup' (StaticProperties [])
 
 option ∷ StaticElement
 option = make "option"
@@ -900,7 +900,7 @@ option_ ∷ StaticElementNoProperties
 option_ = option []
 
 option'_ ∷ ElementNoProperties
-option'_ = option' (Types.StaticProperties [])
+option'_ = option' (StaticProperties [])
 
 output ∷ StaticElement
 output = make "output"
@@ -912,7 +912,7 @@ output_ ∷ StaticElementNoProperties
 output_ = output []
 
 output'_ ∷ ElementNoProperties
-output'_ = output' (Types.StaticProperties [])
+output'_ = output' (StaticProperties [])
 
 p ∷ StaticElement
 p = make "p"
@@ -924,13 +924,13 @@ p_ ∷ StaticElementNoProperties
 p_ = p []
 
 p'_ ∷ ElementNoProperties
-p'_ = p' (Types.StaticProperties [])
+p'_ = p' (StaticProperties [])
 
 param ∷ StaticElementSelfClosing
 param props = make "param" props []
 
 param' ∷ ElementSelfClosing
-param' props = make' "param" props (Types.StaticChildren [])
+param' props = make' "param" props (StaticChildren [])
 
 param_ ∷ StaticElementSelfClosingNoProperties
 param_ = param []
@@ -945,7 +945,7 @@ picture_ ∷ StaticElementNoProperties
 picture_ = picture []
 
 picture'_ ∷ ElementNoProperties
-picture'_ = picture' (Types.StaticProperties [])
+picture'_ = picture' (StaticProperties [])
 
 pre ∷ StaticElement
 pre = make "pre"
@@ -957,7 +957,7 @@ pre_ ∷ StaticElementNoProperties
 pre_ = pre []
 
 pre'_ ∷ ElementNoProperties
-pre'_ = pre' (Types.StaticProperties [])
+pre'_ = pre' (StaticProperties [])
 
 progress ∷ StaticElement
 progress = make "progress"
@@ -969,7 +969,7 @@ progress_ ∷ StaticElementNoProperties
 progress_ = progress []
 
 progress'_ ∷ ElementNoProperties
-progress'_ = progress' (Types.StaticProperties [])
+progress'_ = progress' (StaticProperties [])
 
 q ∷ StaticElement
 q = make "q"
@@ -981,7 +981,7 @@ q_ ∷ StaticElementNoProperties
 q_ = q []
 
 q'_ ∷ ElementNoProperties
-q'_ = q' (Types.StaticProperties [])
+q'_ = q' (StaticProperties [])
 
 rp ∷ StaticElement
 rp = make "rp"
@@ -993,7 +993,7 @@ rp_ ∷ StaticElementNoProperties
 rp_ = rp []
 
 rp'_ ∷ ElementNoProperties
-rp'_ = rp' (Types.StaticProperties [])
+rp'_ = rp' (StaticProperties [])
 
 rt ∷ StaticElement
 rt = make "rt"
@@ -1005,7 +1005,7 @@ rt_ ∷ StaticElementNoProperties
 rt_ = rt []
 
 rt'_ ∷ ElementNoProperties
-rt'_ = rt' (Types.StaticProperties [])
+rt'_ = rt' (StaticProperties [])
 
 ruby ∷ StaticElement
 ruby = make "ruby"
@@ -1017,7 +1017,7 @@ ruby_ ∷ StaticElementNoProperties
 ruby_ = ruby []
 
 ruby'_ ∷ ElementNoProperties
-ruby'_ = ruby' (Types.StaticProperties [])
+ruby'_ = ruby' (StaticProperties [])
 
 s ∷ StaticElement
 s = make "s"
@@ -1029,7 +1029,7 @@ s_ ∷ StaticElementNoProperties
 s_ = s []
 
 s'_ ∷ ElementNoProperties
-s'_ = s' (Types.StaticProperties [])
+s'_ = s' (StaticProperties [])
 
 samp ∷ StaticElement
 samp = make "samp"
@@ -1041,7 +1041,7 @@ samp_ ∷ StaticElementNoProperties
 samp_ = samp []
 
 samp'_ ∷ ElementNoProperties
-samp'_ = samp' (Types.StaticProperties [])
+samp'_ = samp' (StaticProperties [])
 
 script ∷ StaticElement
 script = make "script"
@@ -1053,7 +1053,7 @@ script_ ∷ StaticElementNoProperties
 script_ = script []
 
 script'_ ∷ ElementNoProperties
-script'_ = script' (Types.StaticProperties [])
+script'_ = script' (StaticProperties [])
 
 section ∷ StaticElement
 section = make "section"
@@ -1065,7 +1065,7 @@ section_ ∷ StaticElementNoProperties
 section_ = section []
 
 section'_ ∷ ElementNoProperties
-section'_ = section' (Types.StaticProperties [])
+section'_ = section' (StaticProperties [])
 
 select ∷ StaticElement
 select = make "select"
@@ -1077,7 +1077,7 @@ select_ ∷ StaticElementNoProperties
 select_ = select []
 
 select'_ ∷ ElementNoProperties
-select'_ = select' (Types.StaticProperties [])
+select'_ = select' (StaticProperties [])
 
 small ∷ StaticElement
 small = make "small"
@@ -1089,13 +1089,13 @@ small_ ∷ StaticElementNoProperties
 small_ = small []
 
 small'_ ∷ ElementNoProperties
-small'_ = small' (Types.StaticProperties [])
+small'_ = small' (StaticProperties [])
 
 source ∷ StaticElementSelfClosing
 source props = make "source" props []
 
 source' ∷ ElementSelfClosing
-source' props = make' "source" props (Types.StaticChildren [])
+source' props = make' "source" props (StaticChildren [])
 
 source_ ∷ StaticElementSelfClosingNoProperties
 source_ = source []
@@ -1110,7 +1110,7 @@ span_ ∷ StaticElementNoProperties
 span_ = span []
 
 span'_ ∷ ElementNoProperties
-span'_ = span' (Types.StaticProperties [])
+span'_ = span' (StaticProperties [])
 
 strike ∷ StaticElement
 strike = make "strike"
@@ -1122,7 +1122,7 @@ strike_ ∷ StaticElementNoProperties
 strike_ = strike []
 
 strike'_ ∷ ElementNoProperties
-strike'_ = strike' (Types.StaticProperties [])
+strike'_ = strike' (StaticProperties [])
 
 strong ∷ StaticElement
 strong = make "strong"
@@ -1134,7 +1134,7 @@ strong_ ∷ StaticElementNoProperties
 strong_ = strong []
 
 strong'_ ∷ ElementNoProperties
-strong'_ = strong' (Types.StaticProperties [])
+strong'_ = strong' (StaticProperties [])
 
 style ∷ StaticElement
 style = make "style"
@@ -1146,7 +1146,7 @@ style_ ∷ StaticElementNoProperties
 style_ = style []
 
 style'_ ∷ ElementNoProperties
-style'_ = style' (Types.StaticProperties [])
+style'_ = style' (StaticProperties [])
 
 sub ∷ StaticElement
 sub = make "sub"
@@ -1158,7 +1158,7 @@ sub_ ∷ StaticElementNoProperties
 sub_ = sub []
 
 sub'_ ∷ ElementNoProperties
-sub'_ = sub' (Types.StaticProperties [])
+sub'_ = sub' (StaticProperties [])
 
 summary ∷ StaticElement
 summary = make "summary"
@@ -1170,7 +1170,7 @@ summary_ ∷ StaticElementNoProperties
 summary_ = summary []
 
 summary'_ ∷ ElementNoProperties
-summary'_ = summary' (Types.StaticProperties [])
+summary'_ = summary' (StaticProperties [])
 
 sup ∷ StaticElement
 sup = make "sup"
@@ -1182,7 +1182,7 @@ sup_ ∷ StaticElementNoProperties
 sup_ = sup []
 
 sup'_ ∷ ElementNoProperties
-sup'_ = sup' (Types.StaticProperties [])
+sup'_ = sup' (StaticProperties [])
 
 table ∷ StaticElement
 table = make "table"
@@ -1194,7 +1194,7 @@ table_ ∷ StaticElementNoProperties
 table_ = table []
 
 table'_ ∷ ElementNoProperties
-table'_ = table' (Types.StaticProperties [])
+table'_ = table' (StaticProperties [])
 
 tbody ∷ StaticElement
 tbody = make "tbody"
@@ -1206,7 +1206,7 @@ tbody_ ∷ StaticElementNoProperties
 tbody_ = tbody []
 
 tbody'_ ∷ ElementNoProperties
-tbody'_ = tbody' (Types.StaticProperties [])
+tbody'_ = tbody' (StaticProperties [])
 
 td ∷ StaticElement
 td = make "td"
@@ -1218,7 +1218,7 @@ td_ ∷ StaticElementNoProperties
 td_ = td []
 
 td'_ ∷ ElementNoProperties
-td'_ = td' (Types.StaticProperties [])
+td'_ = td' (StaticProperties [])
 
 template ∷ StaticElement
 template = make "template"
@@ -1230,14 +1230,14 @@ template_ ∷ StaticElementNoProperties
 template_ = template []
 
 template'_ ∷ ElementNoProperties
-template'_ = template' (Types.StaticProperties [])
+template'_ = template' (StaticProperties [])
 
 text
   ∷ ∀ eff update state event
   . String
-  → Types.Component eff update state event
+  → Component eff update state event
 text
-  = Types.CText
+  = CText
 
 textarea ∷ StaticElement
 textarea = make "textarea"
@@ -1249,7 +1249,7 @@ textarea_ ∷ StaticElementNoProperties
 textarea_ = textarea []
 
 textarea'_ ∷ ElementNoProperties
-textarea'_ = textarea' (Types.StaticProperties [])
+textarea'_ = textarea' (StaticProperties [])
 
 tfoot ∷ StaticElement
 tfoot = make "tfoot"
@@ -1261,7 +1261,7 @@ tfoot_ ∷ StaticElementNoProperties
 tfoot_ = tfoot []
 
 tfoot'_ ∷ ElementNoProperties
-tfoot'_ = tfoot' (Types.StaticProperties [])
+tfoot'_ = tfoot' (StaticProperties [])
 
 th ∷ StaticElement
 th = make "th"
@@ -1273,7 +1273,7 @@ th_ ∷ StaticElementNoProperties
 th_ = th []
 
 th'_ ∷ ElementNoProperties
-th'_ = th' (Types.StaticProperties [])
+th'_ = th' (StaticProperties [])
 
 thead ∷ StaticElement
 thead = make "thead"
@@ -1285,7 +1285,7 @@ thead_ ∷ StaticElementNoProperties
 thead_ = thead []
 
 thead'_ ∷ ElementNoProperties
-thead'_ = thead' (Types.StaticProperties [])
+thead'_ = thead' (StaticProperties [])
 
 time ∷ StaticElement
 time = make "time"
@@ -1297,7 +1297,7 @@ time_ ∷ StaticElementNoProperties
 time_ = time []
 
 time'_ ∷ ElementNoProperties
-time'_ = time' (Types.StaticProperties [])
+time'_ = time' (StaticProperties [])
 
 title ∷ StaticElement
 title = make "title"
@@ -1309,7 +1309,7 @@ title_ ∷ StaticElementNoProperties
 title_ = title []
 
 title'_ ∷ ElementNoProperties
-title'_ = title' (Types.StaticProperties [])
+title'_ = title' (StaticProperties [])
 
 tr ∷ StaticElement
 tr = make "tr"
@@ -1321,13 +1321,13 @@ tr_ ∷ StaticElementNoProperties
 tr_ = tr []
 
 tr'_ ∷ ElementNoProperties
-tr'_ = tr' (Types.StaticProperties [])
+tr'_ = tr' (StaticProperties [])
 
 track ∷ StaticElementSelfClosing
 track props = make "track" props []
 
 track' ∷ ElementSelfClosing
-track' props = make' "track" props (Types.StaticChildren [])
+track' props = make' "track" props (StaticChildren [])
 
 track_ ∷ StaticElementSelfClosingNoProperties
 track_ = track []
@@ -1342,7 +1342,7 @@ tt_ ∷ StaticElementNoProperties
 tt_ = tt []
 
 tt'_ ∷ ElementNoProperties
-tt'_ = tt' (Types.StaticProperties [])
+tt'_ = tt' (StaticProperties [])
 
 u ∷ StaticElement
 u = make "u"
@@ -1354,7 +1354,7 @@ u_ ∷ StaticElementNoProperties
 u_ = u []
 
 u'_ ∷ ElementNoProperties
-u'_ = u' (Types.StaticProperties [])
+u'_ = u' (StaticProperties [])
 
 ul ∷ StaticElement
 ul = make "ul"
@@ -1366,7 +1366,7 @@ ul_ ∷ StaticElementNoProperties
 ul_ = ul []
 
 ul'_ ∷ ElementNoProperties
-ul'_ = ul' (Types.StaticProperties [])
+ul'_ = ul' (StaticProperties [])
 
 var ∷ StaticElement
 var = make "var"
@@ -1378,7 +1378,7 @@ var_ ∷ StaticElementNoProperties
 var_ = var []
 
 var'_ ∷ ElementNoProperties
-var'_ = var' (Types.StaticProperties [])
+var'_ = var' (StaticProperties [])
 
 video ∷ StaticElement
 video = make "video"
@@ -1390,13 +1390,13 @@ video_ ∷ StaticElementNoProperties
 video_ = video []
 
 video'_ ∷ ElementNoProperties
-video'_ = video' (Types.StaticProperties [])
+video'_ = video' (StaticProperties [])
 
 wbr ∷ StaticElementSelfClosing
 wbr props = make "wbr" props []
 
 wbr' ∷ ElementSelfClosing
-wbr' props = make' "wbr" props (Types.StaticChildren [])
+wbr' props = make' "wbr" props (StaticChildren [])
 
 wbr_ ∷ StaticElementSelfClosingNoProperties
 wbr_ = wbr []

@@ -2,13 +2,13 @@ module Panda.Bootstrap
   ( bootstrap
   ) where
 
-import Control.Alt              ((<|>))
-import Control.Monad.Eff        (Eff)
-import Control.Monad.Eff.Ref    as Ref
-import DOM.Node.Types           (Document, Node) as DOM
-import FRP.Event                (Event, subscribe) as FRP
-import Panda.Internal.Types     as Types
-import Panda.Render.Element     as Element
+import Control.Alt           ((<|>))
+import Control.Monad.Eff     (Eff)
+import Control.Monad.Eff.Ref as Ref
+import DOM.Node.Types        (Document, Node) as DOM
+import FRP.Event             (Event, subscribe) as FRP
+import Panda.Internal        (Application, EventSystem(..), FX, foldEventSystem)
+import Panda.Render.Element  as Element
 
 import Prelude
 
@@ -17,47 +17,39 @@ import Prelude
 bootstrap
   ∷ ∀ eff update state event
   . DOM.Document
-  → Types.Application (Types.FX eff) update state event
-  → Eff (Types.FX eff)
+  → Application (FX eff) update state event
+  → Eff (FX eff)
       { element ∷ DOM.Node
-      , system ∷ Types.EventSystem (Types.FX eff) update state event
+      , system ∷ EventSystem (FX eff) update state event
       }
 
 bootstrap document { initial, subscription, update, view } = do
-  { element, system } ← Element.render (bootstrap document) document view
+  result ← Element.render (bootstrap document) document view
 
-  case system of
-    Types.StaticSystem →
-      pure
-        { element
-        , system
-        }
+  result.system # foldEventSystem (pure result) \system → do
+    stateRef ← Ref.newRef initial.state
 
-    Types.DynamicSystem system' → do
-      stateRef ← Ref.newRef initial.state
+    let
+      events ∷ FRP.Event event
+      events = subscription <|> system.events
 
-      let
-        events ∷ FRP.Event event
-        events = subscription <|> system'.events
+    cancel ← FRP.subscribe events \event → do
+      state ← Ref.readRef stateRef
 
-      cancel ← FRP.subscribe events \event → do
-        state ← Ref.readRef stateRef
+      { event, state } # update \callback → do
+        mostRecentState ← Ref.readRef stateRef
+        let new@{ state } = callback mostRecentState
 
-        { event, state } # update \callback → do
-          mostRecentState ← Ref.readRef stateRef
-          let new@{ state } = callback mostRecentState
+        Ref.writeRef stateRef state
+        system.handleUpdate new
 
-          Ref.writeRef stateRef state
-          system'.handleUpdate new
+    system.handleUpdate initial
 
-      system'.handleUpdate initial
-
-      pure
-        { element
-        , system: Types.DynamicSystem
-            $ system'
-                { cancel = do
-                    system'.cancel
-                    cancel
-                }
-        }
+    pure $ result
+      { system = DynamicSystem
+          $ system
+              { cancel = do
+                  system.cancel
+                  cancel
+              }
+      }

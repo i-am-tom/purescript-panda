@@ -104,10 +104,10 @@ module Panda.Builders.Properties
   , width
   ) where
 
-import Panda.Internal.Types as Types
-import Panda.Internal.Types (Properties(..), Property(..), PropertyUpdate) as ExportedTypes
+import Panda.Internal                    as Types
+import Panda.Internal                    (Properties(..), Property(..), PropertyUpdate) as ExportedTypes
 import Panda.Builders.Property.Producers as Producers
-import Panda.Builders.Property.Watchers as Watchers
+import Panda.Builders.Property.Watchers  as Watchers
 
 -- | This type is used to hide this nonsense from the user.
 type StaticProperty = ∀ event. Types.Property event

@@ -4,7 +4,7 @@ module Panda.Property
   ) where
 
 import Panda.Builders.Properties as Properties
-import Panda.Internal.Types
+import Panda.Internal
          ( Producer       (..)
          , Property       (..)
          , Properties     (..)

@@ -12,7 +12,7 @@ import Data.Maybe                (Maybe(..), fromJust)
 import Data.Monoid               (mempty)
 import FRP.Event                 (create, subscribe) as FRP
 import Panda.Incremental.Element (execute)
-import Panda.Internal.Types      as Types
+import Panda.Internal            as Types
 import Panda.Render.Property     as Property
 import Partial.Unsafe            (unsafePartial)
 

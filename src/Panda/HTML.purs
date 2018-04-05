@@ -7,8 +7,8 @@ module Panda.HTML
 
 import Data.Maybe              (Maybe)
 import Panda.Builders.Elements as Elements
-import Panda.Internal.Types    as Types
-import Panda.Internal.Types
+import Panda.Internal          as Types
+import Panda.Internal
          ( Children  (..)
          , Component (..)
          , ComponentUpdate
