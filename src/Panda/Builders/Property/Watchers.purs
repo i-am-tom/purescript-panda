@@ -1,75 +1,54 @@
-module Panda.Builders.Property.Watchers where
+module Panda.Builders.Property.Watchers
+  ( class PropertyPairing
+  , buildWatcher
 
-import Data.Identity  (Identity(..))
-import Data.Maybe     (Maybe(..))
-import Panda.Internal as I
+  , renderWhen
+  ) where
+
+import DOM.Event.Types (Event) as DOM
+import Data.Maybe      (Maybe)
+import Panda.Internal  as I
 
 import Prelude
 
-makeDynamic
-  ∷ ∀ update state event
-  . ( { state ∷ state, update ∷ update }
-    → Maybe Boolean
-    )
-  → I.Property update state event
-  → I.Property update state event
-watch predicate
-  = case _ of
-      I.StaticProperty (Fixed { key, value: Identity value }) →
-        DynamicProperty $ Fixed
-          { key
-          , value: DynamicF $ predicate >>> case _ of
-              Just update →
-                I.ShouldUpdate if update
-                  then I.Set value
-                  else I.Delete
+-- | Unfortunate consequence of user-friendliness: we need to express a
+-- | relationship between different types of key and value. This would be no
+-- | big deal in Haskell, but PureScript doesn't yet inline away dictionaries.
 
-              Nothing →
-                I.Ignore
-          }
+class PropertyPairing key value event | key → value where
+  buildWatcher
+    ∷ ∀ update state
+    . key
+    → ({ update ∷ update, state ∷ state } → I.ShouldUpdate value)
+    → I.Property update state event
 
--- | Render a property whenever a predicate holds, and remove it whenever it
--- | doesn't. If possible, use `updateWhen` as a less expensive alternative.
+instance propertyPairingFixed ∷ PropertyPairing String String event where
+  buildWatcher key updater
+    = I.DynamicProperty $ I.Fixed
+        { key
+        , value: I.DynamicF updater
+        }
+
+instance propertyPairingProducer
+    ∷ PropertyPairing I.Producer (DOM.Event → Maybe event) event where
+  buildWatcher key updater
+    = I.DynamicProperty $ I.Producer
+        { key
+        , onEvent: I.DynamicF updater
+        }
+
+-- | Watchers
 
 renderWhen
-  ∷ ∀ update state event
-  . Partial
-  ⇒ ({ state ∷ state, update ∷ update } → Boolean)
+  ∷ ∀ update state event key value
+  . PropertyPairing key value event
+  ⇒ key
+  → ({ update ∷ update, state ∷ state } → Boolean)
+  → value
   → I.Property update state event
-  → I.Property update state event
 
-renderWhen predicate
-  = case _ of
-      I.StaticProperty property →
-        case property of
-          I.Fixed { key, value: Identity value } →
-            I.DynamicProperty $ I.Fixed
-              { key
-              , value: I.DynamicF \update →
-                  if predicate update
-                    then Just value
-                    else Nothing
-              }
-
-PP.className "isAscending" `renderWhen` _.state.isAscending
-
-PP.className `updateWhen` case _ of
-  { update: ReorderList, state: { isAscending: true } } →
-      I.Rerender (Set "is-ascending")
-  { update: ReorderList, state: { isAscending: false } } →
-      I.Rerender (Set "is-descending")
-  _ →
-      I.Ignore
-
-I.Dynamicproperty $ I.Fixed
-  { key: "className"
-  , value: I.DynamicF \update →
-      if update.state.is
-
-PP.className `updateWhen` \{ update, state: { header, isAscending } } →
-  case update of
-    ReorderList →
-      if header == my.header
-        then Rerender if isAscending
-          then "ascending"
-          else "descending"
+renderWhen key predicate value
+  = buildWatcher key \update →
+      if predicate update
+        then I.Rerender (I.Set value)
+        else I.Rerender I.Delete

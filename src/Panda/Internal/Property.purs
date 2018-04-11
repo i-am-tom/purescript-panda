@@ -63,7 +63,7 @@ data PropertyF f update state event
   | Producer { key ∷ Producer, onEvent ∷ f (DOM.Event → Maybe event) }
 
 -- | Should we update? Or shall we just leave things as they are?
-data ShouldUpdate a = Ignore | Rerender a
+data ShouldUpdate a = Ignore | Rerender (PropertyUpdate a)
 
 -- | How should we update? Should we set a value or remove whatever's there?
 data PropertyUpdate a = Set a | Delete
@@ -72,17 +72,12 @@ data PropertyUpdate a = Set a | Delete
 -- | application at the current time.
 
 newtype DynamicF update state a
-  = DynamicF
-      ( { state ∷ state, update ∷ update }
-      → ShouldUpdate (PropertyUpdate a)
-      )
+  = DynamicF ({ state ∷ state, update ∷ update } → ShouldUpdate a)
 
 -- | An actual property is either static (parameterised by identity) or dynamic
 -- | (parameterised by a function from an update/state pair), which means that
 -- | it can respond to changes in the model.
 
 data Property update state event
-
   = StaticProperty (PropertyF Identity update state event)
-
   | DynamicProperty (PropertyF (DynamicF update state) update state event)

@@ -75,6 +75,7 @@ import Prelude
 
 -- | Given an event, get the value of the target element using the foreign
 -- | interface.
+
 targetValue
   ∷ ∀ output
   . (String → Maybe output)
@@ -91,6 +92,7 @@ targetValue handler ev
 
 -- | Given a keyboard event, get the keycode of the relevant key using the
 -- | foreign interface.
+
 keyCode
   ∷ ∀ event
   . (Int → Maybe event)
@@ -104,10 +106,15 @@ keyCode handler ev
         = F.readProp "keyCode" (F.toForeign ev)
       >>= F.readInt
 
+-- | A regular producer takes a DOM event and translates it into some
+-- | user-given event type.
+
 type Producer input
   = ∀ update state event
   . (input → Maybe event)
   → I.Property update state event
+
+-- | Make a maybe-event-firing producer.
 
 makeProducer
   ∷ ∀ input
@@ -120,10 +127,15 @@ makeProducer key onEvent
       , onEvent: Identity (onEvent <<< unsafeCoerce)
       }
 
+-- | A `Producer_` is like a `Producer`, but there's no `Maybe` - all events
+-- | are guaranteed to raise events within the `Application`.
+
 type Producer_ input
   = ∀ update state event
   . (input → event)
   → I.Property update state event
+
+-- | Make a `Producer_` value.
 
 makeProducer_
   ∷ ∀ input

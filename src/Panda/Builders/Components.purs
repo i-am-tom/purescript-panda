@@ -207,6 +207,7 @@ module Panda.Builders.Elements
 import Panda.Internal as I
 
 -- | A fully-polymorphic component (and therefore either an element or text).
+
 type Element
   = ∀ eff update state event
   . Array (I.Property update state event)
@@ -214,23 +215,27 @@ type Element
   → I.Component eff update state event
 
 -- | A fully-polymorphic component with no properties.
+
 type ElementNoProperties
   = ∀ eff update state event
   . Array (I.Component eff update state event)
   → I.Component eff update state event
 
 -- | A fully-polymorphic component with no children.
+
 type SelfClosingElement
   = ∀ eff update state event
   . Array (I.Property update state event)
   → I.Component eff update state event
 
 -- | A fully-polymorphic component with no children or properties.
+
 type SelfClosingElementNoProperties
   = ∀ eff update state event
   . I.Component eff update state event
 
 -- | Make an element from its component parts.
+
 make ∷ String → Element
 make tagName properties children
   = I.ComponentElement
@@ -238,6 +243,8 @@ make tagName properties children
       , properties
       , children
       }
+
+{- Here we go... -}
 
 a ∷ Element
 a = make "a"
