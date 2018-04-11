@@ -15,6 +15,7 @@ import Prelude
 -- | An event system defines the update/event mechanism for a particular
 -- | component. When we update the DOM, we must remember to cancel outgoing
 -- | elements, and register new update handlers.
+
 data EventSystem eff update state event
   = DynamicSystem
       { cancel       ∷ Eff eff Unit
@@ -30,17 +31,18 @@ data EventSystem eff update state event
 
 -- | Given an event system, run the second argument on its contents if dynamic,
 -- | else just return the first value.
+
 foldEventSystem
-  ∷ ∀ eff update state event r
-  . r
+  ∷ ∀ eff update state event result
+  . result
   → ( { cancel       ∷ Eff eff Unit
       , events       ∷ FRP.Event event
       , handleUpdate ∷ { update ∷ update, state ∷ state } → Eff eff Unit
       }
-    → r
+    → result
     )
   → EventSystem eff update state event
-  → r
+  → result
 
 foldEventSystem static handleDynamic
   = case _ of
@@ -49,6 +51,7 @@ foldEventSystem static handleDynamic
 
 -- | Given an applicative context, do something effectful to a **dynamic**
 -- | system, and do nothing with a static one.
+
 runA
   ∷ ∀ f eff update state event
   . Applicative f
@@ -63,6 +66,7 @@ runA
 runA = foldEventSystem (pure unit)
 
 -- | Cancel an event system. This is a no-op on static systems.
+
 cancelEventSystem
   ∷ ∀ eff update state event
   . EventSystem eff update state event
@@ -72,6 +76,7 @@ cancelEventSystem
 
 -- | Handle an update with this event handler. Static handlers will do nothing,
 -- | whereas dynamic handlers have the option to respond to an update.
+
 handleUpdateWithEventSystem
   ∷ ∀ eff update state event
   . { update ∷ update, state ∷ state }
@@ -83,6 +88,7 @@ handleUpdateWithEventSystem update
 
 -- | Event systems can be combined by merging their event streams and
 -- | concatenating their handlers/cancellers. Nothing hugely exciting.
+-- |
 instance semigroupEventSystem
     ∷ Semigroup (EventSystem eff update state event) where
   append (DynamicSystem this) (DynamicSystem that)
@@ -97,6 +103,7 @@ instance semigroupEventSystem
 
 -- | The identity event system is static, and is hence ignored by any `<>`
 -- | operation.
+
 instance monoidEventSystem
     ∷ Monoid (EventSystem eff update state event) where
   mempty = StaticSystem

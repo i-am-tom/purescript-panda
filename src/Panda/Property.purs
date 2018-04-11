@@ -1,14 +1,15 @@
 module Panda.Property
-  ( module Properties
+  ( module Builders
   , module ExportedTypes
   ) where
 
-import Panda.Builders.Properties as Properties
-import Panda.Internal
-         ( Producer       (..)
-         , Property       (..)
-         , Properties     (..)
+-- | This file exports the property API for Panda applications. Everything that
+-- | is accessible under the `PP` namespace comes from this file as an import
+-- | by proxy.
 
-         , PropertyUpdate
+import Panda.Builders.Properties as Builders
+import Panda.Internal
+         ( Producer (..)
+         , Property (..)
          )
   as ExportedTypes

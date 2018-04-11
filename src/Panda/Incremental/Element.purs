@@ -17,8 +17,8 @@ import Prelude
 type Renderer eff update state event
   = I.Component eff update state event
   → Eff eff
-      { element ∷ DOM.Node
-      , system  ∷ I.EventSystem eff update state event
+      { node   ∷ DOM.Node
+      , system ∷ I.EventSystem eff update state event
       }
 
 -- | Given an element, and a set of update instructions, perform the update and
@@ -91,7 +91,7 @@ execute { parent, systems, render, update } = do
 
       -- Insert an element at a given index and initialise its cancellers.
       Algebra.InsertAt index spec → do
-        { element, system }
+        { node, system }
             ← render spec
 
         let
@@ -101,7 +101,7 @@ execute { parent, systems, render, update } = do
 
         case updated of
           Just { systems: systems', child } → do
-            _ ← DOM.insertBefore child element parent
+            _ ← DOM.insertBefore child node parent
 
             pure { systems: systems', hasNewItem: Just index }
 
@@ -178,9 +178,9 @@ execute { parent, systems, render, update } = do
 
       -- Add a child element to the end of the children.
       Algebra.Push spec → do
-        { element, system } ← render spec
+        { node, system } ← render spec
 
-        _ ← DOM.appendChild element parent
+        _ ← DOM.appendChild node parent
         pure
           { systems: Array.snoc systems system
           , hasNewItem: Just (Array.length systems)
@@ -223,8 +223,8 @@ execute { parent, systems, render, update } = do
                 Nothing       → DOM.appendChild
                 Just { head } → (_ `DOM.insertBefore` head)
 
-        { element, system } ← render spec
-        _ ← command element parent
+        { node, system } ← render spec
+        _ ← command node parent
 
         pure
           { systems: Array.cons system systems

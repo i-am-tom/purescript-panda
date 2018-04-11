@@ -1,87 +1,75 @@
 module Panda.Builders.Property.Watchers where
 
+import Data.Identity  (Identity(..))
+import Data.Maybe     (Maybe(..))
 import Panda.Internal as I
 
--- | The type of a property renderer. Anything that produces property update
--- | algebra as the result of a given state and update.
-type Renderer update state event
-  = { state ∷ state, update ∷ update }
-  → Array (I.PropertyUpdate event)
+import Prelude
 
--- -- | General constructor for property watches. Kind of the "advanced mode" -
--- -- | use the other functions if possible.
--- watch
---   ∷ ∀ update state event
---   . ( { state  ∷ state
---       , update ∷ update
---       }
---     → Array Types.PropertyUpdate
---     )
---   → Types.Property update state event
--- watch = Types.PropertyWatcher
--- 
--- -- | Run a property update regardless of the update that is detected. For
--- -- | larger applications, this will happen very regularly, so be careful with
--- -- | this...
--- watchAny
---   ∷ ∀ update state event
---   . Renderer update state event
---   → Types.Property update state event
--- watchAny renderer
---   = watch \update → renderer update
--- 
--- -- | Watch for a particular update.
--- watchFor
---   ∷ ∀ update state event
---   . Eq update
---   ⇒ update
---   → Renderer update state event
---   → Types.Property update state event
--- watchFor search renderer
---   = watch \change →
---       if change.update == search
---         then renderer change
---         else []
--- 
--- -- | Given a set of predicate/render pairs, update the property accordingly
--- -- whenever one of the predicates is matched. Note that this is like a `case`:
--- -- only the first match will be considered. If none matches, no update will be
--- -- applied.
--- watchSet
---   ∷ ∀ update state event
---   . Array
---       { match    ∷ update → Boolean
---       , renderer ∷ Renderer update state event
---       }
---   → Types.Property update state event
--- watchSet routes
---   = watch \change →
---       let get
---             ∷ ∀ r. Array { match ∷ update → Boolean | r }
---             → Maybe { match ∷ update → Boolean | r }
---           get = find \{ match } → match change.update
--- 
---           render
---             ∷ ∀ r. { renderer ∷ Renderer update state event | r }
---             → Array Types.PropertyUpdate
---           render { renderer } = renderer change
---       in
---         case get routes of
---           Just routes' →
---             render routes'
--- 
---           Nothing →
---             []
--- 
--- -- | Update a property whenever a predicate is satisfied.
--- watchWhen
---   ∷ ∀ update state event
---   . ({ state ∷ state, update ∷ update } → Boolean)
---   → Renderer update state event
---   → Types.Property update state event
--- 
--- watchWhen predicate renderer
---   = watch \change →
---       if predicate change
---         then renderer change
---         else []
+makeDynamic
+  ∷ ∀ update state event
+  . ( { state ∷ state, update ∷ update }
+    → Maybe Boolean
+    )
+  → I.Property update state event
+  → I.Property update state event
+watch predicate
+  = case _ of
+      I.StaticProperty (Fixed { key, value: Identity value }) →
+        DynamicProperty $ Fixed
+          { key
+          , value: DynamicF $ predicate >>> case _ of
+              Just update →
+                I.ShouldUpdate if update
+                  then I.Set value
+                  else I.Delete
+
+              Nothing →
+                I.Ignore
+          }
+
+-- | Render a property whenever a predicate holds, and remove it whenever it
+-- | doesn't. If possible, use `updateWhen` as a less expensive alternative.
+
+renderWhen
+  ∷ ∀ update state event
+  . Partial
+  ⇒ ({ state ∷ state, update ∷ update } → Boolean)
+  → I.Property update state event
+  → I.Property update state event
+
+renderWhen predicate
+  = case _ of
+      I.StaticProperty property →
+        case property of
+          I.Fixed { key, value: Identity value } →
+            I.DynamicProperty $ I.Fixed
+              { key
+              , value: I.DynamicF \update →
+                  if predicate update
+                    then Just value
+                    else Nothing
+              }
+
+PP.className "isAscending" `renderWhen` _.state.isAscending
+
+PP.className `updateWhen` case _ of
+  { update: ReorderList, state: { isAscending: true } } →
+      I.Rerender (Set "is-ascending")
+  { update: ReorderList, state: { isAscending: false } } →
+      I.Rerender (Set "is-descending")
+  _ →
+      I.Ignore
+
+I.Dynamicproperty $ I.Fixed
+  { key: "className"
+  , value: I.DynamicF \update →
+      if update.state.is
+
+PP.className `updateWhen` \{ update, state: { header, isAscending } } →
+  case update of
+    ReorderList →
+      if header == my.header
+        then Rerender if isAscending
+          then "ascending"
+          else "descending"

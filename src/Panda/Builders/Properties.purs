@@ -1,7 +1,5 @@
 module Panda.Builders.Properties
-  ( module ExportedTypes
-  , module Producers
-  , module Watchers
+  ( module Producers
 
   , accept
   , action
@@ -104,20 +102,23 @@ module Panda.Builders.Properties
   , width
   ) where
 
-import Panda.Internal                    as Types
-import Panda.Internal                    (Properties(..), Property(..), PropertyUpdate) as ExportedTypes
+import Data.Identity                     (Identity(..))
+import Panda.Internal                    as I
 import Panda.Builders.Property.Producers as Producers
-import Panda.Builders.Property.Watchers  as Watchers
 
--- | This type is used to hide this nonsense from the user.
-type StaticProperty = ∀ event. Types.Property event
+import Prelude
+
+-- | A fully-polymorphic property.
+type StaticProperty
+  = ∀ update state event
+  . I.Property update state event
 
 -- | Make a property.
 make ∷ String → String → StaticProperty
 make key setting
-  = Types.PropertyFixed
+  = I.StaticProperty $ I.Fixed
       { key
-      , value: setting
+      , value: Identity setting
       }
 
 accept ∷ String → StaticProperty

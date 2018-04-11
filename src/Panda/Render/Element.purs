@@ -21,19 +21,20 @@ import Prelude
 -- | Given a component, and a function for bootstrapping any delegate
 -- | applications that may exist within the tree, render the DOM node, and set
 -- | up the event system.
+
 render
   ∷ ∀ eff update state event
   . ( ∀ update' state' event'
-      . I.Application (I.FX eff) update' state' event'
+      . I.App (I.FX eff) update' state' event'
       → Eff (I.FX eff)
-          { element ∷ DOM.Node
+          { node   ∷ DOM.Node
           , system ∷ I.EventSystem (I.FX eff) update' state' event'
           }
     )
   → DOM.Document
   → I.Component (I.FX eff) update state event
   → Eff (I.FX eff)
-      { element ∷ DOM.Node
+      { node   ∷ DOM.Node
       , system ∷ I.EventSystem (I.FX eff) update state event
       }
 
@@ -43,22 +44,22 @@ render bootstrap document
         element ← DOM.createTextNode text document
 
         pure
-          { element: DOM.textToNode element
-          , system: mempty
+          { node: DOM.textToNode element
+          , system: I.StaticSystem
           }
 
       I.ComponentDelegate delegateE →
         delegateE # I.runComponentDelegateX
           \{ delegate, focus } →
-              bootstrap delegate <#> \{ element, system } →
+              bootstrap delegate <#> \{ node, system } →
                 case system of
                   I.StaticSystem →
-                    { element
+                    { node
                     , system: I.StaticSystem
                     }
 
                   I.DynamicSystem system' →
-                    { element
+                    { node
                     , system: I.DynamicSystem $ system'
                         { events = filterMap focus.event system'.events
                         , handleUpdate = \{ state, update } →
@@ -71,32 +72,40 @@ render bootstrap document
                     }
 
       I.ComponentElement component → do
-        tag            ← DOM.createElement component.tagName document
-        propertySystem ← Property.render tag component.properties
+        { node, propertySystem }
+            ← makeEmptyDOMNode component.tagName component.properties
 
-        let node = DOM.elementToNode tag
+        elementSystem ← component.children # foldMap \child → do
+          { node: childNode, system } ← render bootstrap document child
 
-        elementSystem ← case component.children of
-          I.StaticChildren children →
-            children # foldMap \child → do
-              { element, system } ← render bootstrap document child
+          _ ← DOM.appendChild childNode node
+          pure system
 
-              _ ← DOM.appendChild element node
-              pure system
+        pure
+          { node
+          , system: elementSystem <> propertySystem
+          }
 
-          I.DynamicChildren listener → do
-            eventSystems ← Ref.newRef mempty
-            { event: childEvents, push: pushChildEvent } ← FRP.create
+      I.ComponentCollection component → do
+        { event: childEvents, push: pushChildEvent } ← FRP.create
+        eventSystems ← Ref.newRef mempty
 
-            pure $ I.DynamicSystem
-              { cancel: Ref.readRef eventSystems >>= foldMap I.cancelEventSystem
+        { node: parent, propertySystem }
+            ← makeEmptyDOMNode component.tagName component.properties
+
+        pure
+          { node: parent
+          , system: I.DynamicSystem
+              { cancel: Ref.readRef eventSystems
+                  >>= foldMap I.cancelEventSystem
+
               , handleUpdate: \update → do
-                  for_ (listener update) \instruction → do
+                  for_ (component.handler update) \instruction → do
                     systems ← Ref.readRef eventSystems
 
                     { hasNewItem, systems: updatedSystems } ←
                         execute
-                          { parent: node
+                          { parent: parent
                           , systems
                           , render: render bootstrap document
                           , update: instruction
@@ -133,8 +142,23 @@ render bootstrap document
 
               , events: childEvents
               }
-
-        pure
-          { element: node
-          , system:  elementSystem <> propertySystem
           }
+
+  where
+    makeEmptyDOMNode
+      ∷ ∀ eff' update' state' event'
+      . String
+      → Array (I.Property update' state' event')
+      → Eff (I.FX eff')
+          { node           ∷ DOM.Node
+          , propertySystem ∷ I.EventSystem (I.FX eff') update' state' event'
+          }
+
+    makeEmptyDOMNode name properties = do
+      tag            ← DOM.createElement name document
+      propertySystem ← foldMap (Property.render tag) properties
+
+      pure
+        { node:           DOM.elementToNode tag
+        , propertySystem: propertySystem
+        }

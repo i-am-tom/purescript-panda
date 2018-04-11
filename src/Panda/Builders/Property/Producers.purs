@@ -66,6 +66,7 @@ import DOM.HTML.Event.Types (DragEvent, ErrorEvent) as DOM
 import Data.Either          (either)
 import Data.Foreign         (readInt, readString, toForeign) as F
 import Data.Foreign.Index   (readProp) as F
+import Data.Identity        (Identity(..))
 import Data.Maybe           (Maybe(..))
 import Panda.Internal       as I
 import Unsafe.Coerce        (unsafeCoerce)
@@ -104,9 +105,9 @@ keyCode handler ev
       >>= F.readInt
 
 type Producer input
-  = ∀ event
+  = ∀ update state event
   . (input → Maybe event)
-  → I.Property event
+  → I.Property update state event
 
 makeProducer
   ∷ ∀ input
@@ -114,15 +115,15 @@ makeProducer
   → Producer input
 
 makeProducer key onEvent
-  = I.PropertyProducer
+  = I.StaticProperty $ I.Producer
       { key
-      , onEvent: onEvent <<< unsafeCoerce
+      , onEvent: Identity (onEvent <<< unsafeCoerce)
       }
 
 type Producer_ input
-  = ∀ event
+  = ∀ update state event
   . (input → event)
-  → I.Property event
+  → I.Property update state event
 
 makeProducer_
   ∷ ∀ input

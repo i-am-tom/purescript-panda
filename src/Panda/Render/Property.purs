@@ -2,68 +2,70 @@ module Panda.Render.Property
   ( render
   ) where
 
-import Control.Monad.Eff          (Eff)
-import Control.Monad.Eff.Ref      as Ref
-import DOM.Event.EventTarget      (addEventListener, eventListener, removeEventListener, EventListener) as DOM
-import DOM.Event.Types            (Event, EventType) as DOM
-import DOM.HTML.Event.EventTypes  as DOM.Events
-import DOM.Node.Element           (setAttribute) as DOM
-import DOM.Node.Types             (Element, elementToEventTarget) as DOM
-import Data.Filterable            (filtered)
-import Data.Foldable              (foldMap, for_, traverse_)
-import Data.Map                   as Map
-import Data.Maybe                 (Maybe(..))
-import FRP.Event                  (Event, create, subscribe) as FRP
-import Panda.Incremental.Property (execute)
-import Panda.Internal             as Types
+import Control.Monad.Eff         (Eff)
+import Control.Monad.Eff.Ref     as Ref
+import Control.Plus              (empty)
+import DOM.Event.EventTarget     (addEventListener, eventListener, removeEventListener, EventListener) as DOM
+import DOM.Event.Types           (Event, EventType) as DOM
+import DOM.HTML.Event.EventTypes as DOM.Events
+import DOM.Node.Element          (removeAttribute, setAttribute) as DOM
+import DOM.Node.Types            (Element, elementToEventTarget) as DOM
+import Data.Foldable             (traverse_)
+import Data.Identity             (Identity(..))
+import Data.Maybe                (Maybe(..))
+import Data.Monoid               (mempty)
+import FRP.Event                 (Event, create) as FRP
+import Panda.Internal            as I
 
 import Prelude
 
 -- | Convert a Producer into a regular DOM event. This is used to produce an
 -- | EventTarget.
-producerToEventType ∷ Types.Producer → DOM.EventType
+
+producerToEventType ∷ I.Producer → DOM.EventType
 producerToEventType
   = case _ of
-      Types.OnBlur          → DOM.Events.blur
-      Types.OnChange        → DOM.Events.change
-      Types.OnClick         → DOM.Events.click
-      Types.OnDoubleClick   → DOM.Events.dblclick
-      Types.OnDrag          → DOM.Events.drag
-      Types.OnDragEnd       → DOM.Events.dragend
-      Types.OnDragEnter     → DOM.Events.dragenter
-      Types.OnDragLeave     → DOM.Events.dragleave
-      Types.OnDragOver      → DOM.Events.dragover
-      Types.OnDragStart     → DOM.Events.dragstart
-      Types.OnDrop          → DOM.Events.drop
-      Types.OnError         → DOM.Events.error
-      Types.OnFocus         → DOM.Events.focus
-      Types.OnInput         → DOM.Events.input
-      Types.OnKeyDown       → DOM.Events.keydown
-      Types.OnKeyPress      → DOM.Events.keypress
-      Types.OnKeyUp         → DOM.Events.keyup
-      Types.OnMouseDown     → DOM.Events.mousedown
-      Types.OnMouseEnter    → DOM.Events.mouseenter
-      Types.OnMouseLeave    → DOM.Events.mouseleave
-      Types.OnMouseMove     → DOM.Events.mousemove
-      Types.OnMouseOver     → DOM.Events.mouseover
-      Types.OnMouseOut      → DOM.Events.mouseout
-      Types.OnMouseUp       → DOM.Events.mouseup
-      Types.OnScroll        → DOM.Events.scroll
-      Types.OnSubmit        → DOM.Events.submit
-      Types.OnTransitionEnd → DOM.Events.transitionend
+      I.OnBlur          → DOM.Events.blur
+      I.OnChange        → DOM.Events.change
+      I.OnClick         → DOM.Events.click
+      I.OnDoubleClick   → DOM.Events.dblclick
+      I.OnDrag          → DOM.Events.drag
+      I.OnDragEnd       → DOM.Events.dragend
+      I.OnDragEnter     → DOM.Events.dragenter
+      I.OnDragLeave     → DOM.Events.dragleave
+      I.OnDragOver      → DOM.Events.dragover
+      I.OnDragStart     → DOM.Events.dragstart
+      I.OnDrop          → DOM.Events.drop
+      I.OnError         → DOM.Events.error
+      I.OnFocus         → DOM.Events.focus
+      I.OnInput         → DOM.Events.input
+      I.OnKeyDown       → DOM.Events.keydown
+      I.OnKeyPress      → DOM.Events.keypress
+      I.OnKeyUp         → DOM.Events.keyup
+      I.OnMouseDown     → DOM.Events.mousedown
+      I.OnMouseEnter    → DOM.Events.mouseenter
+      I.OnMouseLeave    → DOM.Events.mouseleave
+      I.OnMouseMove     → DOM.Events.mousemove
+      I.OnMouseOver     → DOM.Events.mouseover
+      I.OnMouseOut      → DOM.Events.mouseout
+      I.OnMouseUp       → DOM.Events.mouseup
+      I.OnScroll        → DOM.Events.scroll
+      I.OnSubmit        → DOM.Events.submit
+      I.OnTransitionEnd → DOM.Events.transitionend
 
 -- | Add an event listener to a DOM element. The return result is an `Event`
 -- | that can be watched for events firing from this node, as well as the `key`
 -- | string that was used to register the event.
+
 attach
   ∷ ∀ eff event
-  . { key     ∷ Types.Producer
+  . { key     ∷ I.Producer
     , onEvent ∷ DOM.Event → event
     }
   → DOM.Element
-  → Eff (Types.FX eff)
-      { listener ∷ DOM.EventListener (Types.FX eff)
-      , events ∷ FRP.Event event
+  → Eff (I.FX eff)
+      { listener ∷ DOM.EventListener (I.FX eff)
+      , events   ∷ FRP.Event event
       }
 
 attach { key, onEvent } element = do
@@ -77,100 +79,95 @@ attach { key, onEvent } element = do
   DOM.addEventListener eventType listener false eventTarget
   pure { listener, events }
 
--- | Render a Property on a DOM element. This also initialises any `Watcher`
--- | components, and sets up their event handlers and cancellers.
-render'
-  ∷ ∀ eff update state event
-  . DOM.Element
-  → Types.Property event
-  → Eff (Types.FX eff) (Types.EventSystem (Types.FX eff) update state event)
-
-render' element
-  = case _ of
-      Types.PropertyFixed { key, value } → do
-        DOM.setAttribute key value element
-        pure Types.StaticSystem
-
-      Types.PropertyProducer trigger → do
-        { listener, events } ← attach trigger element
-
-        let
-          eventTarget = DOM.elementToEventTarget element
-          eventType   = producerToEventType trigger.key
-
-        pure $ Types.DynamicSystem
-          { cancel: DOM.removeEventListener
-              eventType listener false eventTarget
-          , events: filtered events
-          , handleUpdate: \_ → pure unit
-          }
-
 -- | Render a set of properties (static or dynamic) onto an element, and
 -- | prepare the event system.
+
 render
   ∷ ∀ eff update state event
   . DOM.Element
-  → Types.Properties update state event
-  → Eff (Types.FX eff) (Types.EventSystem (Types.FX eff) update state event)
+  → I.Property update state event
+  → Eff (I.FX eff)
+      ( I.EventSystem
+          (I.FX eff)
+          update state event
+      )
 
 render element
   = case _ of
-      Types.StaticProperties properties →
-        foldMap (render' element) properties
+      I.StaticProperty property →
+        case property of
+          I.Fixed { key, value: Identity value } →
+            DOM.setAttribute key value element $> I.StaticSystem
 
-      Types.DynamicProperties listener → do
-        eventSystems                               ← Ref.newRef Map.empty
-        { event: events, push: pushPropertyEvent } ← FRP.create
+          I.Producer { key, onEvent: Identity transformer } → do
+            { push: propagateEvent, event: producerEvents } ← FRP.create
 
-        pure $ Types.DynamicSystem
-          { cancel: do
-              systems ← Ref.readRef eventSystems
+            DOM.addEventListener
+              (producerToEventType key)
+              (producerFunctionToEventListener transformer propagateEvent)
+              false
+              (DOM.elementToEventTarget element)
 
-              for_ systems case _ of
-                Types.DynamicSystem { cancel } →
-                  cancel
+            pure $ I.DynamicSystem
+              { cancel: mempty
+              , events: producerEvents
+              , handleUpdate: mempty
+              }
 
-                _ →
-                  pure unit
+      I.DynamicProperty property →
+        case property of
+          I.Fixed { key, value: I.DynamicF listener } →
+            pure $ I.DynamicSystem
+              { cancel: DOM.removeAttribute key element
+              , events: empty
+              , handleUpdate: listener >>> case _ of
+                  Nothing    → DOM.removeAttribute key element
+                  Just value → DOM.setAttribute key value element
+              }
 
-          , events
+          I.Producer { key, onEvent: I.DynamicF listener } → do
+            { push: propagateEvent, event: events } ← FRP.create
+            currentHandler ← Ref.newRef (DOM.eventListener \_ → pure unit)
 
-          , handleUpdate: listener >>> traverse_ \instruction → do
-              systems ← Ref.readRef eventSystems
+            pure $ I.DynamicSystem
+              { cancel: cancelEventListener key currentHandler
+              , events
+              , handleUpdate: listener >>> case _ of
+                  Just replacement → do
+                    cancelEventListener key currentHandler
 
-              { hasNewItem, systems: updatedSystems } ←
-                  execute
-                    { element
-                    , systems
-                    , render: render' element
-                    , update: instruction
-                    }
+                    let
+                      handler
+                        = DOM.eventListener
+                        $ replacement >>> traverse_ propagateEvent
 
-              case hasNewItem of
-                Nothing →
-                  Ref.writeRef
-                    eventSystems
-                    updatedSystems
+                    DOM.addEventListener (producerToEventType key) handler
+                      false (DOM.elementToEventTarget element)
 
-                Just index →
-                  case Map.lookup index updatedSystems of
-                    Just (Types.DynamicSystem system) → do
-                      canceller ←
-                        FRP.subscribe
-                          system.events
-                          pushPropertyEvent
+                  Nothing →
+                    cancelEventListener key currentHandler
+              }
+  where
+    producerFunctionToEventListener
+      ∷ ∀ eff'
+      . (DOM.Event → Maybe event)
+      → (event → Eff (I.FX eff') Unit)
+      → DOM.EventListener (I.FX eff')
 
-                      let
-                        updated
-                          = Types.DynamicSystem $ system
-                              { cancel = do
-                                  system.cancel
-                                  canceller
-                              }
+    producerFunctionToEventListener onEvent registerEvent
+      = DOM.eventListener $ onEvent >>> traverse_ registerEvent
 
-                      Ref.writeRef eventSystems
-                        $ Map.insert index updated updatedSystems
+    cancelEventListener
+      ∷ ∀ eff'
+      . I.Producer
+      → Ref.Ref (DOM.EventListener (I.FX eff'))
+      → Eff (I.FX eff') Unit
 
-                    _ →
-                      pure unit
-          }
+    cancelEventListener key ref = do
+      handler ← Ref.readRef ref
+
+      DOM.removeEventListener
+        (producerToEventType key)
+        handler
+        false
+        (DOM.elementToEventTarget element)
