@@ -1,88 +1,136 @@
-module Panda.Internal.Component where
+module Panda.Internal.Component
+  ( Collection
+  , ComponentUpdate
+  , Delegate
+  , Element
+  , Text
+  ) where
 
-import Data.Maybe                 (Maybe)
-import Data.Algebra.Array         as Algebra.Array
-import Panda.Internal.Application (Application)
-import Panda.Internal.Property    (Property)
+import DOM.Node.Document     (createElement, createTextNode) as DOM
+import DOM.Node.Node         (appendChild) as DOM
+import DOM.Node.Types        (elementToNode, textToNode) as DOM
+import Data.Algebra.Array    as Algebra.Array
+import Data.Foldable         (fold)
+import Data.Maybe            (Maybe(..))
+import Data.Traversable      (for, traverse)
+import Panda.Internal.Common as Common
 
--- | Components are the units with which we build up a view.
-data Component eff update state event
+import Panda.Prelude
 
-  -- | A `Collection` is a set of elements than can be affected incrementally
-  -- | by using an array algebra.
-  = ComponentCollection
-      { tagName ∷ String
-      , properties ∷ Array (Property update state event)
-      , handler
-          ∷ { state ∷ state, update ∷ update }
-          → Array (ComponentUpdate eff update state event)
-      }
+-- | Regular text can be inserted into the DOM as a text node.
 
-  -- | A delegate allows one application to be embedded within another and thus
-  -- | encapsulate an event loop.
-  | ComponentDelegate (ComponentDelegateX eff update state event)
+newtype Text
+  = Text String
 
-  -- | A regular element is exactly analogous to an HTML element.
-  | ComponentElement
-      { tagName    ∷ String
-      , properties ∷ Array (Property update state event)
-      , children   ∷ Array (Component eff update state event)
-      }
+instance componentText ∷ Common.Component Text update state event where
+  renderComponent _ (Text text) = do
+    document' ← document
+    node      ← effToEffect (DOM.createTextNode text document')
 
-  -- | Plain text.
-  | ComponentText String
+    pure { node: DOM.textToNode node, system: Nothing }
 
--- | The update algebra for Panda components.
-type ComponentUpdate eff update state event
-  = Algebra.Array.Update (Component eff update state event)
+-- | Delegate applications can be mounted as components to allow composition of
+-- | applications in larger settings.
 
--- | Component delegates allow us to reuse applications within larger
--- | applications, provided that we can wire up the two event systems.
-type ComponentDelegate eff update state event update' state' event'
-  = { delegate ∷ Application Component eff update' state' event'
-    , focus
-        ∷ { update ∷ update → Maybe update'
-          , state  ∷ state  → state'
-          , event  ∷ event' → Maybe event
-          }
-    }
-
--- | An existentialised component delegate is the same as a component delegate,
--- | but we stop caring about the subupdate/substate/subevent at the
--- | type-level. This is fine to do, as `focus` still gives us a way to get to
--- | and from the subtypes.
-newtype ComponentDelegateX eff update state event
-  = ComponentDelegateX
-      ( ∀ result
-      . ( ∀ update' state' event'
-        . ComponentDelegate eff
-            update  state  event
-            update' state' event'
-        → result
-        )
-      → result
+newtype Delegate update state event
+  = Delegate
+      ( ∀ subupdate substate subevent
+      . { delegate ∷ Common.Application subupdate substate subevent
+        , focus
+            ∷ { update ∷    update → Maybe subupdate
+              , state  ∷    state  →       substate
+              , event  ∷ subevent  → Maybe event
+              }
+        }
       )
 
--- | Existentialise an application delegate for embedding within a component.
-mkApplicationDelegateX
-  ∷ ∀ eff update state event update' state' event'
-  . ComponentDelegate eff update state event update' state' event'
-  → ComponentDelegateX eff update state event
-mkApplicationDelegateX delegate
-  = ComponentDelegateX \f → f delegate
+--instance componentDelegate
+--    ∷ Component (Delegate update state event) update state event where
+--  renderComponent bootstrap (Delegate { delegate, focus })
+--    = bootstrap delegate <#> \{ node, system } →
+--        case system of
+--          Nothing →
+--            { node, system: Nothing }
+--
+--          Just (EventSystem subsystem) →
+--            { node
+--            , system: Just $ EventSystem subsystem
+--                { events = filterMap focus.event subsystem.events
+--
+--                , handleUpdate = \{ state, update } →
+--                    case focus.update update of
+--                      Nothing →
+--                        pure unit
+--
+--                      Just subupdate →
+--                        subsystem.handleUpdate
+--                          { update: subupdate
+--                          , state:  focus.state state
+--                          }
+--                }
+--            }
 
--- | Retrieve an application delegate from an existentialised delegate, using
--- | the functions within `focus` to wire up the two applications.
-runComponentDelegateX
-  ∷ ∀ eff update state event result
-  . ( ∀ update' state' event'
-      . ComponentDelegate eff
-          update  state  event
-          update' state' event'
-      → result
-    )
-  → ComponentDelegateX eff update state event
-  → result
 
-runComponentDelegateX run (ComponentDelegateX delegateX)
-  = delegateX run
+-- | When a Panda component wants to alter its child elements dynamically, it
+-- | does so by way of an incremental `ComponentUpdate` algebra. This specifies
+-- | a set of possible operations and, in cases of expanding the child list,
+-- | the specifications for those new children.
+
+type ComponentUpdate update state event
+  = Algebra.Array.Update (Common.ComponentX update state event)
+
+-- | A "Collection" is a node whose children can be updated incrementally using
+-- | the ComponentUpdate algebra. It's otherwise the same as an Element, but
+-- | note that an element's children are largely fixed.
+
+newtype Collection update state event
+  = Collection
+      { tagName ∷ String
+      , properties ∷ Array (Common.PropertyX update state event)
+      , handler
+          ∷ { state ∷ state, update ∷ update }
+          → Array (ComponentUpdate update state event)
+      }
+
+-- | An "element" is pretty much exactly what it means in the DOM spec: it's an
+-- | HTML element with some properties and some children. All its magic will
+-- | come from its properties and children, either of which may be dynamic.
+
+newtype Element update state event
+  = Element
+      { tagName    ∷ String
+      , properties ∷ Array (Common.PropertyX update state event)
+      , children   ∷ Array (Common.ComponentX update state event)
+      }
+
+instance componentElement
+    ∷ Common.Component (Element update state event) update state event where
+  renderComponent bootstrap (Element { tagName, properties, children }) = do
+    document' ← document
+
+    element ← effToEffect $ DOM.createElement tagName document'
+    let parentNode = DOM.elementToNode element
+
+    -- Attach all the properties to the newly-created element.
+    -- TODO: s/map fold $ traverse/foldMap/ once Effect is Monoid.
+
+    propertySystem
+      ← map fold
+      ∘ traverse (Common.renderPropertyX element)
+      $ properties
+
+    -- Set up all the children's systems and nodes...
+
+    renderedChildren
+      ← traverse (Common.renderComponentX bootstrap)
+      $ children
+
+    -- TODO: s/map fold $ for/flip foldMap/ once Effect is Monoid.
+
+    childrenSystem ← map fold $ for renderedChildren \{ node, system } →
+      effToEffect $ DOM.appendChild node parentNode $> system
+
+    pure
+      { node: parentNode
+      , system: propertySystem <> childrenSystem
+      }

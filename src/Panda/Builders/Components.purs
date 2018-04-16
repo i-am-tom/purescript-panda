@@ -1,5 +1,5 @@
-module Panda.Builders.Elements
-  ( module Panda.Builders.Elements
+module Panda.Builders.Components
+  ( module Panda.Builders.Components
 
   , a
   , a_

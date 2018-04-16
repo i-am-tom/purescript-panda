@@ -1,260 +1,314 @@
 module Panda.Incremental.Element where
 
-import Control.Monad.Eff    (Eff)
-import Data.Array           as Array
-import Data.Algebra.Array   as Algebra
-import DOM.Node.Node        (appendChild, childNodes, insertBefore, removeChild) as DOM
-import DOM.Node.NodeList    (toArray) as DOM
-import DOM.Node.Types       (Node) as DOM
-import Data.Foldable        (for_)
-import Data.Maybe           (Maybe(..))
-import Panda.Internal       as I
+import DOM.Node.Node      (appendChild, childNodes, insertBefore, removeChild) as DOM
+import DOM.Node.NodeList  (toArray) as DOM
+import DOM.Node.Types     (Node) as DOM
+import Data.Algebra.Array as Algebra
+import Data.Array         as Array
+import Data.Foldable      (for_, traverse_)
+import Data.Maybe         (Maybe(..), fromMaybe)
+import Data.Traversable   (for)
+import Effect             (Effect)
+import Panda.Internal     as I
 
-import Prelude
+import Panda.Prelude
 
 -- | The type of a renderer from Component DSL to HTML. Note that, as a
 -- | byproduct, this also produces the event system for wiring up the node.
-type Renderer eff update state event
-  = I.Component eff update state event
-  → Eff eff
+
+type Renderer update state event
+  = I.ComponentX update state event
+  → Effect
       { node   ∷ DOM.Node
-      , system ∷ I.EventSystem eff update state event
+      , system ∷ Maybe (I.EventSystem update state event)
       }
+
+-- | This is a pretty ugly type, so we'll use this synonym. An incremental step
+-- | (effectfully) produces an updated set of systems, and optionally an index
+-- | xfor some "new" item to be reviewed.
+
+type ExecutionResult update state event
+  = Effect
+      ( Maybe
+          { systems    ∷ Array (Maybe (I.EventSystem update state event))
+          , hasNewItem ∷ Maybe Int
+          }
+      )
+
+-- | Delete the node at the given index, and cancel any event system that might
+-- | have been established.
+
+deleteAt
+  ∷ ∀ update state event
+  . Int
+  → DOM.Node
+  → Array DOM.Node
+  → Array (Maybe (I.EventSystem update state event))
+  → ExecutionResult update state event
+
+deleteAt index parent children systems = do
+  let
+    result = { updated: _, element: _, system: _ }
+      <$> Array.deleteAt index systems
+      <*> Array.index children index
+      <*> Array.index systems  index
+
+  for result \{ updated, element, system } → do
+    _ ← effToEffect (DOM.removeChild element parent)
+
+    for_ system \(I.EventSystem { cancel }) →
+      cancel
+
+    pure
+      { systems: updated
+      , hasNewItem: Nothing
+      }
+
+-- | Remove all elements from within this collection, and cancel all the event
+-- | systems contained within.
+
+empty
+  ∷ ∀ update state event
+  . DOM.Node
+  → Array DOM.Node
+  → Array (Maybe (I.EventSystem update state event))
+  → ExecutionResult update state event
+
+empty parent children systems =
+  traverse_ (traverse_ \(I.EventSystem { cancel }) → cancel) systems
+    *> for_ children (effToEffect ∘ (_ `DOM.removeChild` parent))
+    $> Just { systems: [], hasNewItem: Nothing }
+
+-- | Insert the given component at the given index, rendering the element to
+-- | HTML and wiring the event system accordingly.
+
+insertAt
+  ∷ ∀ update state event
+  . Int
+  → I.ComponentX update state event
+  → Renderer update state event
+  → DOM.Node
+  → Array DOM.Node
+  → Array (Maybe (I.EventSystem update state event))
+  → ExecutionResult update state event
+
+insertAt index spec render parent children systems = do
+  { node, system } ← render spec
+
+  let
+    updated = { systems: _, child: _ }
+      <$> Array.insertAt index system systems
+      <*> Array.index children index
+
+  for updated \{ systems: systems', child } → do
+    _ ← effToEffect (DOM.insertBefore child node parent)
+    pure { systems: systems', hasNewItem: Just index }
+
+move
+  ∷ ∀ update state event
+  . Int
+  → Int
+  → DOM.Node
+  → Array DOM.Node
+  → Array (Maybe (I.EventSystem update state event))
+  → ExecutionResult update state event
+
+move from to parent children systems = do
+  let
+    moveSystem = do
+      system ← Array.index systems from
+
+      tmp ← Array.deleteAt from systems
+      Array.insertAt to system tmp
+
+    moveElement = do
+      element ← Array.index children from
+
+      if to == Array.length children
+        then pure (effToEffect (DOM.appendChild element parent))
+        else do
+          target ← Array.index children to
+          pure (effToEffect (DOM.insertBefore element target parent))
+
+    plan
+      = { systems: _, action: _ }
+          <$> moveSystem
+          <*> moveElement
+
+  for plan \result → do
+    _ ← result.action
+
+    pure
+      { systems: result.systems
+      , hasNewItem: Nothing
+      }
+
+-- | Remove the last thing from the collection, and cancel its event system.
+
+pop
+  ∷ ∀ update state event
+  . DOM.Node
+  → Array DOM.Node
+  → Array (Maybe (I.EventSystem update state event))
+  → ExecutionResult update state event
+
+pop parent children systems = do
+  let
+    result = { elements: _, eventSystems: _ }
+      <$> Array.unsnoc children
+      <*> Array.unsnoc systems
+
+  for result \{ elements, eventSystems } → do
+    for_ eventSystems.last \(I.EventSystem { cancel }) →
+      cancel
+
+    _ ← effToEffect (DOM.removeChild elements.last parent)
+
+    pure
+      { systems: eventSystems.init
+      , hasNewItem: Nothing
+      }
+
+-- | Add a given component to the end of the collection, rendering it and
+-- | wiring up its event system.
+
+push
+  ∷ ∀ update state event
+  . I.ComponentX update state event
+  → Renderer update state event
+  → DOM.Node
+  → Array DOM.Node
+  → Array (Maybe (I.EventSystem update state event))
+  → ExecutionResult update state event
+
+push spec render parent children systems = do
+  { node, system } ← render spec
+
+  _ ← effToEffect (DOM.appendChild node parent)
+
+  pure $ Just
+    { systems: Array.snoc systems system
+    , hasNewItem: Just (Array.length systems)
+    }
+
+-- | Remove the first element from the collection and cancel its event system.
+
+shift
+  ∷ ∀ update state event
+  . DOM.Node
+  → Array DOM.Node
+  → Array (Maybe (I.EventSystem update state event))
+  → ExecutionResult update state event
+
+shift parent children systems = do
+  let
+    result = { elements: _, eventSystems: _ }
+      <$> Array.uncons children
+      <*> Array.uncons systems
+
+  for result \{ elements, eventSystems } → do
+    for_ eventSystems.head \(I.EventSystem { cancel }) →
+      cancel
+
+    _ ← effToEffect (DOM.removeChild elements.head parent)
+
+    pure
+      { systems: eventSystems.tail
+      , hasNewItem: Nothing
+      }
+
+-- | Swap two elements in the collection.
+
+swap
+  ∷ ∀ update state event
+  . Int
+  → Int
+  → DOM.Node
+  → Array DOM.Node
+  → Array (Maybe (I.EventSystem update state event))
+  → ExecutionResult update state event
+
+swap this that parent children systems = do
+  case compare this that of
+    GT →
+      swap that this parent children systems
+
+    EQ →
+      pure Nothing
+
+    LT → do
+      partial ← move this that parent children systems
+
+      map join $ for partial \{ systems: tmp } →
+        move that this parent children tmp
+
+-- | Add an element at the beginning of the collection.
+
+unshift
+  ∷ ∀ update state event
+  . I.ComponentX update state event
+  → Renderer update state event
+  → DOM.Node
+  → Array DOM.Node
+  → Array (Maybe (I.EventSystem update state event))
+  → ExecutionResult update state event
+
+unshift spec render parent children systems = do
+  { node, system } ← render spec
+
+  _ ← effToEffect case Array.uncons children of
+    Just { head } → DOM.insertBefore node head parent
+    Nothing       → DOM.appendChild node parent
+
+  pure $ Just
+    { systems: Array.cons system systems
+    , hasNewItem: Just 0
+    }
 
 -- | Given an element, and a set of update instructions, perform the update and
 -- | reconfigure the event systems.
+
 execute
-  ∷ ∀ eff update state event
+  ∷ ∀ update state event
   . { parent   ∷ DOM.Node
-    , systems  ∷ Array (I.EventSystem (I.FX eff) update state event)
-    , render   ∷ Renderer (I.FX eff) update state event
-    , update   ∷ I.ComponentUpdate (I.FX eff) update state event
+    , systems  ∷ Array (Maybe (I.EventSystem update state event))
+    , render   ∷ Renderer update state event
+    , update   ∷ I.ComponentUpdate update state event
     }
-  → Eff (I.FX eff)
-      { systems ∷ Array
-          ( I.EventSystem (I.FX eff) update state event
-          )
+  → Effect
+      { systems ∷ Array (Maybe (I.EventSystem update state event))
       , hasNewItem ∷ Maybe Int
       }
 
 execute { parent, systems, render, update } = do
-  children ← DOM.childNodes parent >>= DOM.toArray
+  children ← effToEffect $ DOM.childNodes parent >>= DOM.toArray
 
-  case update of
-      -- Delete an element from the DOM and execute its cancellers.
-      Algebra.DeleteAt index → do
-        let
-          result = { updated: _, element: _, system: _ }
-            <$> Array.deleteAt index systems
-            <*> Array.index children index
-            <*> Array.index systems  index
+  result ← case update of
+    Algebra.DeleteAt index →
+      deleteAt index parent children systems
 
-        case result of
-          Just { updated, element, system } → do
-            _ ← DOM.removeChild element parent
+    Algebra.Empty →
+      empty parent children systems
 
-            case system of
-              I.DynamicSystem { cancel } →
-                cancel
+    Algebra.InsertAt index spec →
+      insertAt index spec render parent children systems
 
-              I.StaticSystem →
-                pure unit
+    Algebra.Move from to →
+      move from to parent children systems
 
-            pure
-              { systems: updated
-              , hasNewItem: Nothing
-              }
+    Algebra.Pop →
+      pop parent children systems
 
-          _ →
-            pure
-              { systems
-              , hasNewItem: Nothing
-              }
+    Algebra.Push spec →
+      push spec render parent children systems
 
-      -- Remove all the children from the DOM node and run all the cancellers.
-      Algebra.Empty → do
-        for_ systems case _ of
-          I.DynamicSystem { cancel } →
-            cancel
+    Algebra.Shift →
+      shift parent children systems
 
-          I.StaticSystem →
-            pure unit
+    Algebra.Swap this that →
+      swap this that parent children systems
 
-        for_ children \node → do
-          _ ← DOM.removeChild node parent
-          pure unit
+    Algebra.Unshift spec →
+      unshift spec render parent children systems
 
-        pure
-          { systems: []
-          , hasNewItem: Nothing
-          }
-
-      -- Insert an element at a given index and initialise its cancellers.
-      Algebra.InsertAt index spec → do
-        { node, system }
-            ← render spec
-
-        let
-          updated = { systems: _, child: _ }
-            <$> Array.insertAt index system systems
-            <*> Array.index children index
-
-        case updated of
-          Just { systems: systems', child } → do
-            _ ← DOM.insertBefore child node parent
-
-            pure { systems: systems', hasNewItem: Just index }
-
-          Nothing →
-            pure { systems, hasNewItem: Nothing }
-
-      -- Move an element from one position to another. To be explicit, this
-      -- takes the element at `from`, and places it _before_ the element at
-      -- `to + 1`. If no element `to + 1` exists, this is an `append`.
-      Algebra.Move from to → do
-        let
-          moveSystem = do
-            system ← Array.index systems from
-
-            tmp ← Array.deleteAt from systems
-            Array.insertAt to system tmp
-
-          moveElement = do
-            element ← Array.index children from
-
-            if to == Array.length children
-              then pure (DOM.appendChild element parent)
-              else do
-                target ← Array.index children to
-                pure (DOM.insertBefore element target parent)
-
-          plan
-            = { systems: _, action: _ }
-                <$> moveSystem
-                <*> moveElement
-
-        case plan of
-          Just result → do
-            _ ← result.action
-            pure
-              { systems: result.systems
-              , hasNewItem: Nothing
-              }
-
-          Nothing →
-            pure
-              { systems
-              , hasNewItem: Nothing
-              }
-
-      -- Remove the last child element.
-      Algebra.Pop → do
-        let
-          result = { elements: _, eventSystems: _ }
-            <$> Array.unsnoc children
-            <*> Array.unsnoc systems
-
-        case result of
-          Just { elements, eventSystems } → do
-            case eventSystems.last of
-              I.DynamicSystem { cancel } →
-                cancel
-
-              I.StaticSystem →
-                pure unit
-
-            _ ← DOM.removeChild elements.last parent
-
-            pure
-              { systems: eventSystems.init
-              , hasNewItem: Nothing
-              }
-
-          Nothing →
-            pure
-              { systems
-              , hasNewItem: Nothing
-              }
-
-      -- Add a child element to the end of the children.
-      Algebra.Push spec → do
-        { node, system } ← render spec
-
-        _ ← DOM.appendChild node parent
-        pure
-          { systems: Array.snoc systems system
-          , hasNewItem: Just (Array.length systems)
-          }
-
-      -- Remove the first child.
-      Algebra.Shift → do
-        let
-          result = { elements: _, eventSystems: _ }
-            <$> Array.uncons children
-            <*> Array.uncons systems
-
-        case result of
-          Just { elements, eventSystems } → do
-            case eventSystems.head of
-              I.DynamicSystem { cancel } →
-                cancel
-
-              I.StaticSystem →
-                pure unit
-
-            _ ← DOM.removeChild elements.head parent
-
-            pure
-              { systems: eventSystems.tail
-              , hasNewItem: Nothing
-              }
-
-          Nothing →
-            pure
-              { systems
-              , hasNewItem: Nothing
-              }
-
-      -- Prepend a child to the list.
-      Algebra.Unshift spec → do
-        let
-          command
-            = case Array.uncons children of
-                Nothing       → DOM.appendChild
-                Just { head } → (_ `DOM.insertBefore` head)
-
-        { node, system } ← render spec
-        _ ← command node parent
-
-        pure
-          { systems: Array.cons system systems
-          , hasNewItem: Just 0
-          }
-
-      Algebra.Swap this that → do
-        case compare this that of
-          GT →
-            execute
-              { parent
-              , systems
-              , render
-              , update: Algebra.Swap that this
-              }
-
-          EQ →
-            pure { systems, hasNewItem: Nothing }
-
-          LT → do
-            { systems: tmp } ← execute
-              { parent
-              , systems
-              , render
-              , update: Algebra.Move this that
-              }
-
-            execute
-              { parent
-              , systems: tmp
-              , render
-              , update: Algebra.Move that this
-              }
+  pure (fromMaybe { systems, hasNewItem: Nothing } result)

@@ -3,58 +3,68 @@ module Panda.Bootstrap
   ) where
 
 import Control.Alt           ((<|>))
-import Control.Monad.Eff     (Eff)
 import Control.Monad.Eff.Ref as Ref
-import DOM.Node.Types        (Document, Node) as DOM
+import DOM.Node.Types        (Node) as DOM
+import Data.Maybe            (Maybe(..))
+import Effect                (Effect)
 import FRP.Event             (Event, subscribe) as FRP
 import Panda.Internal        as I
-import Panda.Render.Element  as Element
 
-import Prelude
+import Panda.Prelude
 
--- | Given an application, produce the DOM element and the system of events
--- | around it. This function is called internally by `runApplicationInNode`.
+-- | Given a Panda application, bootstrap the entire thing, wiring up the event
+-- | systems as appropriate, and return the possibly-generated event system
+-- | along with the node to be attached to the DOM.
 
 bootstrap
-  ∷ ∀ eff update state event
-  . DOM.Document
-  → I.App (I.FX eff) update state event
-  → Eff (I.FX eff)
+  ∷ ∀ update state event
+  . I.Application update state event
+  → Effect
       { node   ∷ DOM.Node
-      , system ∷ I.EventSystem (I.FX eff) update state event
+      , system ∷ Maybe (I.EventSystem update state event)
       }
 
-bootstrap document app = do
-  -- Firstly, render the application to get an element and system.
-  result ← Element.render (bootstrap document) document app.view
+bootstrap app = do
+  result ← I.renderComponentX bootstrap app.view
 
-  -- We now have a couple things to do: we need to tie the outgoing events and
-  -- `subscription` streams together, then pipe that into `update`, and finally
-  -- augment the canceller to take care of cleaning this up.
+  case result.system of
+    Nothing →
+      -- Applications that are either totally static (_or_ produce events
+      -- without reading updates) don't need any sort of event system.
+      pure
+        { node: result.node
+        , system: Nothing
+        }
 
-  result.system # I.foldEventSystem (pure result) \system → do
-    stateRef ← Ref.newRef app.initial.state
+    Just (I.EventSystem system) → do
+       -- We could do this with a stream (and originally did!), but it's much
+       -- more performant to model that stream with a mutable reference.
+      stateRef ← effToEffect (Ref.newRef app.initial.state)
 
-    let
-      events ∷ FRP.Event event
-      events = app.subscription <|> system.events
+      let
+        events ∷ FRP.Event event
+        events = app.subscription <|> system.events
 
-    cancel ← FRP.subscribe events \event → do
-      state ← Ref.readRef stateRef
+      cancel ← effToEffect $ FRP.subscribe events \event → effectToEff do
+        state ← effToEffect (Ref.readRef stateRef)
 
-      { event, state } # app.update \callback → do
-        mostRecentState ← Ref.readRef stateRef
-        let new@{ state } = callback mostRecentState
+        -- Every time an event is raised in the front end, that can trigger any
+        -- number of updates from the app's `update` function. So, we supply
+        -- that function with a callback that pipes each generated update
+        -- through `handleUpdate` in the event system.
+        { event, state } # app.update \callback → do
+          mostRecentState ← effToEffect (Ref.readRef stateRef)
+          let new@{ state } = callback mostRecentState
 
-        Ref.writeRef stateRef state
-        system.handleUpdate new
+          effToEffect (Ref.writeRef stateRef state)
+          system.handleUpdate new
 
-    system.handleUpdate app.initial
+      system.handleUpdate app.initial
 
-    pure $ result
-      { system = I.DynamicSystem $ system
-          { cancel = do
-              system.cancel
-              cancel
-          }
-      }
+      pure $ result
+        { system = Just ∘ I.EventSystem $ system
+            { cancel = do
+                system.cancel
+                effToEffect cancel
+            }
+        }

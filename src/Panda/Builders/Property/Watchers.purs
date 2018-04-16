@@ -6,7 +6,8 @@ module Panda.Builders.Property.Watchers
   ) where
 
 import DOM.Event.Types (Event) as DOM
-import Data.Maybe      (Maybe)
+import Data.Maybe      (Maybe(..))
+import Data.Monoid     (class Monoid, mempty)
 import Panda.Internal  as I
 
 import Prelude
@@ -15,29 +16,48 @@ import Prelude
 -- | relationship between different types of key and value. This would be no
 -- | big deal in Haskell, but PureScript doesn't yet inline away dictionaries.
 
-class PropertyPairing key value event | key → value where
+class PropertyPairing key value e | key → value, value → key e where
   buildWatcher
     ∷ ∀ update state
     . key
     → ({ update ∷ update, state ∷ state } → I.ShouldUpdate value)
-    → I.Property update state event
+    → I.Property update state e
 
-instance propertyPairingFixed ∷ PropertyPairing String String event where
+  blank
+    ∷ value
+
+instance propertyPairingFixed ∷ PropertyPairing String String e where
   buildWatcher key updater
     = I.DynamicProperty $ I.Fixed
         { key
         , value: I.DynamicF updater
         }
 
+  blank
+    = ""
+
 instance propertyPairingProducer
-    ∷ PropertyPairing I.Producer (DOM.Event → Maybe event) event where
+    ∷ PropertyPairing I.Producer (DOM.Event → Maybe e) e where
   buildWatcher key updater
     = I.DynamicProperty $ I.Producer
         { key
         , onEvent: I.DynamicF updater
         }
 
+  blank
+    = const Nothing
+
 -- | Watchers
+
+determinedBy
+  ∷ ∀ update state event key value
+  . PropertyPairing key value event
+  ⇒ (value → I.Property update state event)
+  → ({ update ∷ update, state ∷ state } → I.ShouldUpdate value)
+  → I.Property update state event
+determinedBy partialProperty renderer
+  = ?f (partialProperty blank)
+
 
 renderWhen
   ∷ ∀ update state event key value
@@ -52,3 +72,13 @@ renderWhen key predicate value
       if predicate update
         then I.Rerender (I.Set value)
         else I.Rerender I.Delete
+
+updateWhen
+  ∷ ∀ update state event key value
+  . PropertyPairing key value event
+  ⇒ key
+  → ({ update ∷ update, state ∷ state } → I.ShouldUpdate value)
+  → I.Property update state event
+
+updateWhen
+  = buildWatcher

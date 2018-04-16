@@ -33,10 +33,12 @@ import Prelude
 
 -- | A queen's row is defined by her name, age at time of the given season, and
 -- | the town from which she originates.
+
 type Queen = { name ∷ String, age ∷ Int, origin ∷ String, season ∷ Int }
 
 -- | Updates are sent from the `update function down to the DOM, and the DOM
 -- | can react accordingly.
+
 data Update eff
   = FilterTable String
   | RenderTable
@@ -44,15 +46,18 @@ data Update eff
 
 -- | The state of this application. Note we don't include the search string, as
 -- | it can exist within the updates alone.
+
 type State = { rows ∷ Array Queen, isAscending ∷ Boolean, header ∷ Header }
 
 -- | These are the events that occur within the table. We can either select a
 -- | header to determine the sort, or enter a search string to filter.
+
 data Event
   = SortSelected Header
   | SearchEntered String
 
 -- | The headers that we show on the table.
+
 data Header = Name | Age | Origin | Season
 derive instance eqHeader ∷ Eq Header
 derive instance genericHeader ∷ Generic Header _
@@ -64,17 +69,26 @@ headers ∷ Array Header
 headers = [ Name, Age, Origin, Season ]
 
 -- | Make a header in the data table.
-makeTableHeader ∷ ∀ eff. Header → PH.Component eff (Update eff) State Event
+
+makeTableHeader
+  ∷ ∀ eff
+  . Header
+  → PH.Component eff (Update eff) State Event
+
 makeTableHeader header
-  = PH.strong'
-      [ PP.when (\{ state } → state.header /= header) \{ state } →
-          PP.className if state.isAscending
+  = PH.strong
+      [ PP.className `sven` isCurrentHeader $ \now →
+          if now.state.isAscending
             then "highlight--ascending"
             else "highlight--descending"
       ]
 
       [ PH.text (show header)
       ]
+  where
+    isCurrentHeader { state }
+      = state.header == header
+
 
 matches ∷ String → Queen → Boolean
 matches search { name, age, origin, season }
@@ -89,10 +103,10 @@ matches search { name, age, origin, season }
 renderRow ∷ ∀ eff state event. Queen → PH.Component eff (Update eff) state event
 renderRow queen@{ name, age, origin, season }
   = PH.tr
-      [ PP.className "hidden" `PP.renderWhen` \{ update } →
-          case update of
-            FilterTable str → str `matches` queen
-            _               → false
+      [ -- PP.className "hidden" `PP.render` \{ update } →
+        --   case update of
+        --     FilterTable str → str `matches` queen
+        --     _               → false
       ]
 
       [ PH.td_
@@ -135,17 +149,6 @@ view
                     [ makeTableHeader header
                     ]
               ]
-
-          , PH.tbody'_ $ PH.DynamicChildren \{ update, state } →
-              case update of
-                RenderTable →
-                  map (CAlgebra.Push <<< renderRow) state.rows
-
-                UpdateTableRows instructions →
-                  instructions
-
-                _ →
-                  []
           ]
       ]
 
@@ -168,28 +171,28 @@ updater dispatch { event, state }
           cmp ∷ ∀ x. Ord x ⇒ x → x → Ordering
           cmp = if willAscend then compare else flip compare
 
-          { state: rows, moves }
-              = state.rows # PH.sortBy case selection of
-                  Name   → cmp `on` _.name
-                  Age    → cmp `on` _.age
-                  Origin → cmp `on` _.origin
-                  Season → cmp `on` _.season
+--          { state: rows, moves }
+--              = state.rows # PH.sortBy case selection of
+--                  Name   → cmp `on` _.name
+--                  Age    → cmp `on` _.age
+--                  Origin → cmp `on` _.origin
+--                  Season → cmp `on` _.season
 
           state'
             = { header: selection
               , isAscending: willAscend
-              , rows: rows
+              , rows: []
               }
         in do
-          dispatch \_ →
-            { update: UpdateTableRows moves
-            , state: state'
+          dispatch \state →
+            { update: UpdateTableRows []
+            , state: state
             }
 
 -- | The Panda application.
 application ∷ ∀ eff. Array Queen → Eff (P.FX eff) Unit
 application queens
-  = void $ P.runApplication
+  = void $ P.runApplicationInBody
       { view
       , initial:
           { state:
