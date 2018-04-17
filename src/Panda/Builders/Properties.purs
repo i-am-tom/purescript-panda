@@ -102,23 +102,20 @@ module Panda.Builders.Properties
   , width
   ) where
 
-import Data.Identity                     (Identity(..))
-import Panda.Internal                    as I
+import Panda.Internal.Types              as Types
 import Panda.Builders.Property.Producers as Producers
-
-import Prelude
 
 -- | A fully-polymorphic property.
 type StaticProperty
   = ∀ update state event
-  . I.Property update state event
+  . Types.Property update state event
 
 -- | Make a property.
 make ∷ String → String → StaticProperty
 make key setting
-  = I.StaticProperty $ I.Fixed
+  = Types.Fixed
       { key
-      , value: Identity setting
+      , value: setting
       }
 
 accept ∷ String → StaticProperty

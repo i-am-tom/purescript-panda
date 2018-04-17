@@ -1,33 +1,23 @@
 module Panda.HTML
   ( module Builders
-  , module ExportedTypes
-
-  , delegate
+  , module Exports
   ) where
 
-import Data.Maybe     (Maybe)
-import Panda.Internal as I
-
 import Panda.Builders.Components as Builders
-import Panda.Internal
-         ( Component (..)
-         , ComponentUpdate
-         )
-  as ExportedTypes
+import Panda.Internal.Types      (Component (..), ComponentUpdate) as Exports
+import Panda.Internal.Types      as Types
 
-delegate
-  ∷ ∀ eff update subupdate state substate event subevent
-  . { update ∷ update   → Maybe subupdate
-    , state  ∷ state    → substate
-    , event  ∷ subevent → Maybe event
-    }
-  → I.App eff subupdate substate subevent
-  → I.Component eff update state event
+import Panda.Prelude
 
-delegate focus application
-  = I.ComponentDelegate
-      ( I.mkComponentDelegateX
-          { delegate: application
-          , focus
-          }
-      )
+--delegate
+--  ∷ ∀ update subupdate state substate event subevent
+--  . { update ∷ update   → Maybe subupdate
+--    , state  ∷ state    → substate
+--    , event  ∷ subevent → Maybe event
+--    }
+--  → Types.Application subupdate substate subevent
+--  → Types.Component update state event
+--
+--delegate focus application
+--  = Types.Delegate ∘ Types.mkComponentDelegateX
+--  $ Types.ComponentDelegate { application, focus }

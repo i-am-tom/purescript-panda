@@ -1,15 +1,12 @@
 module Panda.Incremental.Element where
 
-import DOM.Node.Node      (appendChild, childNodes, insertBefore, removeChild) as DOM
-import DOM.Node.NodeList  (toArray) as DOM
-import DOM.Node.Types     (Node) as DOM
-import Data.Algebra.Array as Algebra
-import Data.Array         as Array
-import Data.Foldable      (for_, traverse_)
-import Data.Maybe         (Maybe(..), fromMaybe)
-import Data.Traversable   (for)
-import Effect             (Effect)
-import Panda.Internal     as I
+import DOM.Node.Node              (appendChild, childNodes, insertBefore, removeChild) as DOM
+import DOM.Node.NodeList          (toArray) as DOM
+import DOM.Node.Types             (Node) as DOM
+import Data.Algebra.Array         as Algebra
+import Data.Array                 as Array
+import Effect                     (Effect)
+import Panda.Internal.Types       as Types
 
 import Panda.Prelude
 
@@ -17,10 +14,10 @@ import Panda.Prelude
 -- | byproduct, this also produces the event system for wiring up the node.
 
 type Renderer update state event
-  = I.ComponentX update state event
+  = Types.Component update state event
   → Effect
       { node   ∷ DOM.Node
-      , system ∷ Maybe (I.EventSystem update state event)
+      , system ∷ Maybe (Types.EventSystem update state event)
       }
 
 -- | This is a pretty ugly type, so we'll use this synonym. An incremental step
@@ -30,7 +27,7 @@ type Renderer update state event
 type ExecutionResult update state event
   = Effect
       ( Maybe
-          { systems    ∷ Array (Maybe (I.EventSystem update state event))
+          { systems    ∷ Array (Maybe (Types.EventSystem update state event))
           , hasNewItem ∷ Maybe Int
           }
       )
@@ -43,7 +40,7 @@ deleteAt
   . Int
   → DOM.Node
   → Array DOM.Node
-  → Array (Maybe (I.EventSystem update state event))
+  → Array (Maybe (Types.EventSystem update state event))
   → ExecutionResult update state event
 
 deleteAt index parent children systems = do
@@ -56,7 +53,7 @@ deleteAt index parent children systems = do
   for result \{ updated, element, system } → do
     _ ← effToEffect (DOM.removeChild element parent)
 
-    for_ system \(I.EventSystem { cancel }) →
+    for_ system \(Types.EventSystem { cancel }) →
       cancel
 
     pure
@@ -71,11 +68,11 @@ empty
   ∷ ∀ update state event
   . DOM.Node
   → Array DOM.Node
-  → Array (Maybe (I.EventSystem update state event))
+  → Array (Maybe (Types.EventSystem update state event))
   → ExecutionResult update state event
 
 empty parent children systems =
-  traverse_ (traverse_ \(I.EventSystem { cancel }) → cancel) systems
+  traverse_ (traverse_ \(Types.EventSystem { cancel }) → cancel) systems
     *> for_ children (effToEffect ∘ (_ `DOM.removeChild` parent))
     $> Just { systems: [], hasNewItem: Nothing }
 
@@ -85,11 +82,11 @@ empty parent children systems =
 insertAt
   ∷ ∀ update state event
   . Int
-  → I.ComponentX update state event
+  → Types.Component update state event
   → Renderer update state event
   → DOM.Node
   → Array DOM.Node
-  → Array (Maybe (I.EventSystem update state event))
+  → Array (Maybe (Types.EventSystem update state event))
   → ExecutionResult update state event
 
 insertAt index spec render parent children systems = do
@@ -110,7 +107,7 @@ move
   → Int
   → DOM.Node
   → Array DOM.Node
-  → Array (Maybe (I.EventSystem update state event))
+  → Array (Maybe (Types.EventSystem update state event))
   → ExecutionResult update state event
 
 move from to parent children systems = do
@@ -149,7 +146,7 @@ pop
   ∷ ∀ update state event
   . DOM.Node
   → Array DOM.Node
-  → Array (Maybe (I.EventSystem update state event))
+  → Array (Maybe (Types.EventSystem update state event))
   → ExecutionResult update state event
 
 pop parent children systems = do
@@ -159,7 +156,7 @@ pop parent children systems = do
       <*> Array.unsnoc systems
 
   for result \{ elements, eventSystems } → do
-    for_ eventSystems.last \(I.EventSystem { cancel }) →
+    for_ eventSystems.last \(Types.EventSystem { cancel }) →
       cancel
 
     _ ← effToEffect (DOM.removeChild elements.last parent)
@@ -174,11 +171,11 @@ pop parent children systems = do
 
 push
   ∷ ∀ update state event
-  . I.ComponentX update state event
+  . Types.Component update state event
   → Renderer update state event
   → DOM.Node
   → Array DOM.Node
-  → Array (Maybe (I.EventSystem update state event))
+  → Array (Maybe (Types.EventSystem update state event))
   → ExecutionResult update state event
 
 push spec render parent children systems = do
@@ -197,7 +194,7 @@ shift
   ∷ ∀ update state event
   . DOM.Node
   → Array DOM.Node
-  → Array (Maybe (I.EventSystem update state event))
+  → Array (Maybe (Types.EventSystem update state event))
   → ExecutionResult update state event
 
 shift parent children systems = do
@@ -207,7 +204,7 @@ shift parent children systems = do
       <*> Array.uncons systems
 
   for result \{ elements, eventSystems } → do
-    for_ eventSystems.head \(I.EventSystem { cancel }) →
+    for_ eventSystems.head \(Types.EventSystem { cancel }) →
       cancel
 
     _ ← effToEffect (DOM.removeChild elements.head parent)
@@ -225,7 +222,7 @@ swap
   → Int
   → DOM.Node
   → Array DOM.Node
-  → Array (Maybe (I.EventSystem update state event))
+  → Array (Maybe (Types.EventSystem update state event))
   → ExecutionResult update state event
 
 swap this that parent children systems = do
@@ -246,11 +243,11 @@ swap this that parent children systems = do
 
 unshift
   ∷ ∀ update state event
-  . I.ComponentX update state event
+  . Types.Component update state event
   → Renderer update state event
   → DOM.Node
   → Array DOM.Node
-  → Array (Maybe (I.EventSystem update state event))
+  → Array (Maybe (Types.EventSystem update state event))
   → ExecutionResult update state event
 
 unshift spec render parent children systems = do
@@ -271,12 +268,12 @@ unshift spec render parent children systems = do
 execute
   ∷ ∀ update state event
   . { parent   ∷ DOM.Node
-    , systems  ∷ Array (Maybe (I.EventSystem update state event))
+    , systems  ∷ Array (Maybe (Types.EventSystem update state event))
     , render   ∷ Renderer update state event
-    , update   ∷ I.ComponentUpdate update state event
+    , update   ∷ Types.ComponentUpdate update state event
     }
   → Effect
-      { systems ∷ Array (Maybe (I.EventSystem update state event))
+      { systems ∷ Array (Maybe (Types.EventSystem update state event))
       , hasNewItem ∷ Maybe Int
       }
 

@@ -2,13 +2,13 @@ module Panda.Bootstrap
   ( bootstrap
   ) where
 
-import Control.Alt           ((<|>))
-import Control.Monad.Eff.Ref as Ref
-import DOM.Node.Types        (Node) as DOM
-import Data.Maybe            (Maybe(..))
-import Effect                (Effect)
-import FRP.Event             (Event, subscribe) as FRP
-import Panda.Internal        as I
+import Control.Alt                ((<|>))
+import Control.Monad.Eff.Ref      as Ref
+import DOM.Node.Types             (Node) as DOM
+import Effect                     (Effect)
+import FRP.Event                  (Event, subscribe) as FRP
+import Panda.Internal.Types       as Types
+import Panda.Render.Component     as Component
 
 import Panda.Prelude
 
@@ -18,14 +18,14 @@ import Panda.Prelude
 
 bootstrap
   ∷ ∀ update state event
-  . I.Application update state event
+  . Types.Application update state event
   → Effect
       { node   ∷ DOM.Node
-      , system ∷ Maybe (I.EventSystem update state event)
+      , system ∷ Maybe (Types.EventSystem update state event)
       }
 
 bootstrap app = do
-  result ← I.renderComponentX bootstrap app.view
+  result ← Component.render app.view
 
   case result.system of
     Nothing →
@@ -36,7 +36,7 @@ bootstrap app = do
         , system: Nothing
         }
 
-    Just (I.EventSystem system) → do
+    Just (Types.EventSystem system) → do
        -- We could do this with a stream (and originally did!), but it's much
        -- more performant to model that stream with a mutable reference.
       stateRef ← effToEffect (Ref.newRef app.initial.state)
@@ -62,7 +62,7 @@ bootstrap app = do
       system.handleUpdate app.initial
 
       pure $ result
-        { system = Just ∘ I.EventSystem $ system
+        { system = Just ∘ Types.EventSystem $ system
             { cancel = do
                 system.cancel
                 effToEffect cancel

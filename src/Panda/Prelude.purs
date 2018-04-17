@@ -1,5 +1,6 @@
 module Panda.Prelude
   ( module Prelude
+  , module Exports
 
   , (∘)
 
@@ -15,6 +16,10 @@ import DOM.HTML.Types    (htmlDocumentToDocument)
 import DOM.Node.Types    (Document)
 import Effect            (Effect)
 import Unsafe.Coerce     (unsafeCoerce)
+
+import Data.Foldable    (for_, traverse_) as Exports
+import Data.Traversable (for, traverse) as Exports
+import Data.Maybe       (Maybe(..), fromMaybe, maybe) as Exports
 
 import Prelude
 

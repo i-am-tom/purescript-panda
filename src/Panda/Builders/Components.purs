@@ -204,41 +204,41 @@ module Panda.Builders.Components
   , video_
   ) where
 
-import Panda.Internal as I
+import Panda.Internal.Types as Types
 
 -- | A fully-polymorphic component (and therefore either an element or text).
 
 type Element
-  = ∀ eff update state event
-  . Array (I.Property update state event)
-  → Array (I.Component eff update state event)
-  → I.Component eff update state event
+  = ∀ update state event
+  . Array (Types.Property update state event)
+  → Array (Types.Component update state event)
+  → Types.Component update state event
 
 -- | A fully-polymorphic component with no properties.
 
 type ElementNoProperties
-  = ∀ eff update state event
-  . Array (I.Component eff update state event)
-  → I.Component eff update state event
+  = ∀ update state event
+  . Array (Types.Component update state event)
+  → Types.Component update state event
 
 -- | A fully-polymorphic component with no children.
 
 type SelfClosingElement
-  = ∀ eff update state event
-  . Array (I.Property update state event)
-  → I.Component eff update state event
+  = ∀ update state event
+  . Array (Types.Property update state event)
+  → Types.Component update state event
 
 -- | A fully-polymorphic component with no children or properties.
 
 type SelfClosingElementNoProperties
-  = ∀ eff update state event
-  . I.Component eff update state event
+  = ∀ update state event
+  . Types.Component update state event
 
 -- | Make an element from its component parts.
 
 make ∷ String → Element
 make tagName properties children
-  = I.ComponentElement
+  = Types.Element
       { tagName
       , properties
       , children
@@ -853,11 +853,11 @@ template_ ∷ ElementNoProperties
 template_ = template []
 
 text
-  ∷ ∀ eff update state event
+  ∷ ∀ update state event
   . String
-  → I.Component eff update state event
+  → Types.Component update state event
 text
-  = I.ComponentText
+  = Types.Text
 
 textarea ∷ Element
 textarea = make "textarea"
