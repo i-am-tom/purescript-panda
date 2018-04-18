@@ -96,8 +96,8 @@ runComponentDelegateX
   → ComponentDelegateX update state event
   → result
 
-runComponentDelegateX
-  = unsafeCoerce
+runComponentDelegateX f
+  = f ∘ unsafeCoerce
 
 -- | A property is either a fixed key/value pair, an event type and
 -- | corresponding handler, or a dynamic producer of properties.

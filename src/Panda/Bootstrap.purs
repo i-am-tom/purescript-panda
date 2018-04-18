@@ -25,7 +25,7 @@ bootstrap
       }
 
 bootstrap app = do
-  result ← Component.render app.view
+  result ← Component.render bootstrap app.view
 
   case result.system of
     Nothing →

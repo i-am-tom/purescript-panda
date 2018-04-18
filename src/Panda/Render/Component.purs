@@ -19,7 +19,13 @@ import Panda.Prelude
 
 render
   ∷ ∀ update state event
-  . _
+  . ( ∀ update' state' event'
+    . Types.Application update' state' event'
+    → Effect
+        { node   ∷ DOM.Node
+        , system ∷ Maybe (Types.EventSystem update' state' event')
+        }
+    )
   → Types.Component update state event
   → Effect
       { node   ∷ DOM.Node
@@ -142,7 +148,7 @@ render bootstrap = case _ of
   Types.Delegate delegate →
     delegate # Types.runComponentDelegateX
       \(Types.ComponentDelegate { focus, application }) → do
-        { node, system } ← bootstrap (?f application)
+        { node, system } ← bootstrap application
 
         pure case system of
           Just (Types.EventSystem system') →
@@ -150,11 +156,11 @@ render bootstrap = case _ of
             , system: Just ∘ Types.EventSystem $ system'
                 { events = filterMap focus.event system'.events
                 , handleUpdate = \{ state, update } →
-                    case ?i focus.update update of
+                    case focus.update update of
                       Just subupdate →
                         system'.handleUpdate
                           { update: subupdate
-                          , state:  ?j focus.state state
+                          , state:  focus.state state
                           }
 
                       Nothing →
@@ -164,6 +170,6 @@ render bootstrap = case _ of
 
           Nothing →
             { node
-            , system
+            , system: Nothing
             }
 
