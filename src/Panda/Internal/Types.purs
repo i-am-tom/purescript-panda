@@ -60,15 +60,15 @@ data Component update state event
 
   | Text String
 
---  | Delegate (ComponentDelegateX update state event)
+  | Delegate (ComponentDelegateX update state event)
 
 newtype ComponentDelegate update state event subupdate substate subevent
   = ComponentDelegate
       { focus
-        ∷ { state  ∷ state    → substate
-          , update ∷ update   → Maybe subupdate
-          , event  ∷ subevent → Maybe event
-          }
+          ∷ { state  ∷ state    → substate
+            , update ∷ update   → Maybe subupdate
+            , event  ∷ subevent → Maybe event
+            }
 
       , application ∷ Application subupdate substate subevent
       }

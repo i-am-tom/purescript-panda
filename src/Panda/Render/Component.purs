@@ -1,30 +1,32 @@
 module Panda.Render.Component where
 
-import Control.Monad.Eff.Ref      as Ref
-import DOM.Node.Document          (createElement, createTextNode) as DOM
-import DOM.Node.Node              (appendChild) as DOM
-import DOM.Node.Types             (Node, elementToNode, textToNode) as DOM
-import Data.Array                 as Array
-import Data.Foldable              (fold)
-import Data.Maybe                 (fromJust)
-import Effect                     (Effect)
-import FRP.Event                  (create, subscribe) as FRP
-import Panda.Incremental.Element  (execute)
-import Panda.Internal.Types       as Types
-import Panda.Render.Property      as Property
-import Partial.Unsafe             (unsafePartial)
+import Control.Monad.Eff.Ref     as Ref
+import DOM.Node.Document         (createElement, createTextNode) as DOM
+import DOM.Node.Node             (appendChild) as DOM
+import DOM.Node.Types            (Node, elementToNode, textToNode) as DOM
+import Data.Array                as Array
+import Data.Filterable           (filterMap)
+import Data.Foldable             (fold)
+import Data.Maybe                (fromJust)
+import Effect                    (Effect)
+import FRP.Event                 (create, subscribe) as FRP
+import Panda.Incremental.Element (execute)
+import Panda.Internal.Types      as Types
+import Panda.Render.Property     as Property
+import Partial.Unsafe            (unsafePartial)
 
 import Panda.Prelude
 
 render
   ∷ ∀ update state event
-  . Types.Component update state event
+  . _
+  → Types.Component update state event
   → Effect
       { node   ∷ DOM.Node
       , system ∷ Maybe (Types.EventSystem update state event)
       }
 
-render = case _ of
+render bootstrap = case _ of
   Types.Text text → do
     document' ← document
     node      ← effToEffect (DOM.createTextNode text document')
@@ -48,7 +50,7 @@ render = case _ of
     -- Set up all the children's systems and nodes...
 
     renderedChildren
-      ← traverse render
+      ← traverse (render bootstrap)
       $ children
 
     -- TODO: s/map fold $ for/flip foldMap/ once Effect is Monoid.
@@ -92,7 +94,7 @@ render = case _ of
                       execute
                         { parent
                         , systems
-                        , render
+                        , render: render bootstrap
                         , update: instruction
                         }
 
@@ -137,7 +139,31 @@ render = case _ of
       , system: childSystem <> propertySystem
       }
 
---  Types.Delegate delegate →
---    delegate # Types.runComponentDelegateX
---      \(Types.ComponentDelegate { focus, application }) →
---        ?f
+  Types.Delegate delegate →
+    delegate # Types.runComponentDelegateX
+      \(Types.ComponentDelegate { focus, application }) → do
+        { node, system } ← bootstrap (?f application)
+
+        pure case system of
+          Just (Types.EventSystem system') →
+            { node
+            , system: Just ∘ Types.EventSystem $ system'
+                { events = filterMap focus.event system'.events
+                , handleUpdate = \{ state, update } →
+                    case ?i focus.update update of
+                      Just subupdate →
+                        system'.handleUpdate
+                          { update: subupdate
+                          , state:  ?j focus.state state
+                          }
+
+                      Nothing →
+                        pure unit
+                }
+            }
+
+          Nothing →
+            { node
+            , system
+            }
+
