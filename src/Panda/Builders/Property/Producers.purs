@@ -225,13 +225,13 @@ onFocus_ ∷ Producer_ DOM.FocusEvent
 onFocus_ = makeProducer_ Types.OnFocus
 
 onInput ∷ Producer DOM.Event
-onInput = makeProducer Types.OnFocus
+onInput = makeProducer Types.OnInput
 
 onInput_ ∷ Producer_ DOM.Event
-onInput_ = makeProducer_ Types.OnFocus
+onInput_ = makeProducer_ Types.OnInput
 
 onInput' ∷ Producer String
-onInput' = makeProducer Types.OnFocus <<< targetValue
+onInput' = makeProducer Types.OnInput <<< targetValue
 
 onKeyDown ∷ Producer DOM.KeyboardEvent
 onKeyDown = makeProducer Types.OnKeyDown

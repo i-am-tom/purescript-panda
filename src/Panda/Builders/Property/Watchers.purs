@@ -4,15 +4,24 @@ import Panda.Internal.Types as Types
 
 import Panda.Prelude
 
-when
+watch
   ∷ ∀ update state event
-  . ( { update ∷ update, state ∷ state } → Boolean)
-  → ( { update ∷ update, state ∷ state }
-    → Types.Property update state event
+  . ( { update ∷ update, state ∷ state }
+    → Types.ShouldUpdate (Types.Property update state event)
     )
   → Types.Property update state event
 
-when predicate listener
-  = Types.Dynamic
-  ∘ map Types.SetTo
-  $ listener
+watch listener
+  = Types.Dynamic listener
+
+when
+  ∷ ∀ value update state event
+  . ({ update ∷ update, state ∷ state } → Boolean)
+  → ({ update ∷ update, state ∷ state } → Types.Property update state event)
+  → Types.Property update state event
+
+when predicate build
+  = Types.Dynamic \update →
+      if predicate update
+        then Types.SetTo (build update)
+        else Types.Ignore

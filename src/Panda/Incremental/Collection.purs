@@ -1,4 +1,4 @@
-module Panda.Incremental.Element where
+module Panda.Incremental.Collection where
 
 import DOM.Node.Node              (appendChild, childNodes, insertBefore, removeChild) as DOM
 import DOM.Node.NodeList          (toArray) as DOM
@@ -181,7 +181,7 @@ push
 push spec render parent children systems = do
   { node, system } ← render spec
 
-  _ ← effToEffect (DOM.appendChild node parent)
+  _ ← effToEffect (DOM.appendChild (spy node) (spy parent))
 
   pure $ Just
     { systems: Array.snoc systems system

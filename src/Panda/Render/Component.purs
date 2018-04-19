@@ -1,19 +1,19 @@
 module Panda.Render.Component where
 
-import Control.Monad.Eff.Ref     as Ref
-import DOM.Node.Document         (createElement, createTextNode) as DOM
-import DOM.Node.Node             (appendChild) as DOM
-import DOM.Node.Types            (Node, elementToNode, textToNode) as DOM
-import Data.Array                as Array
-import Data.Filterable           (filterMap)
-import Data.Foldable             (fold)
-import Data.Maybe                (fromJust)
-import Effect                    (Effect)
-import FRP.Event                 (create, subscribe) as FRP
-import Panda.Incremental.Element (execute)
-import Panda.Internal.Types      as Types
-import Panda.Render.Property     as Property
-import Partial.Unsafe            (unsafePartial)
+import Control.Monad.Eff.Ref        as Ref
+import DOM.Node.Document            (createElement, createTextNode) as DOM
+import DOM.Node.Node                (appendChild) as DOM
+import DOM.Node.Types               (Node, elementToNode, textToNode) as DOM
+import Data.Array                   as Array
+import Data.Filterable              (filterMap)
+import Data.Foldable                (fold)
+import Data.Maybe                   (fromJust)
+import Effect                       (Effect)
+import FRP.Event                    (create, subscribe) as FRP
+import Panda.Incremental.Collection (execute)
+import Panda.Internal.Types         as Types
+import Panda.Render.Property        as Property
+import Partial.Unsafe               (unsafePartial)
 
 import Panda.Prelude
 

@@ -11,9 +11,11 @@ import Control.Monad.Eff         (Eff)
 import Control.Monad.Eff.Class   (liftEff)
 import Control.Monad.Eff.Console (logShow)
 import Control.Plus              (empty)
-import Data.Array                (sortWith)
-import Data.Either               (either)
+import Data.Array                (sortBy, sortWith)
+import Data.Algebra.Array        as Algebra
+import Data.Either               (Either(..))
 import Data.Foldable             (any)
+import Data.Function             (on)
 import Data.Generic.Rep          (class Generic)
 import Data.Generic.Rep.Show     (genericShow)
 import Data.Monoid               (mempty)
@@ -79,7 +81,7 @@ headers = [ Name, Age, Origin, Season ]
 makeTableHeader ∷ Header → PH.Component Update State Event
 makeTableHeader header
   = PH.strong
-      [ when (\u → u.state.header == header) \{ state } →
+      [ PP.when (\u → u.state.header == header) \{ state } →
           PP.className if state.isAscending
             then "highlight--ascending"
             else "highlight--descending"
@@ -101,8 +103,14 @@ matches search { name, age, origin, season }
 renderRow ∷ ∀ state event. Queen → PH.Component Update state event
 renderRow queen@{ name, age, origin, season }
   = PH.tr
-      [ PP.when (const true) \{ update } →
-          PP.className "hidden"
+      [ PP.watch \{ update } →
+          case update of
+            FilterTable str →
+              if str `matches` queen
+                then P.Clear
+                else P.SetTo (PP.className "hidden")
+            _ →
+              P.Ignore
       ]
 
       [ PH.td_
@@ -145,6 +153,17 @@ view
                     [ makeTableHeader header
                     ]
               ]
+
+          , PH.tbody'_ \{ update, state } →
+              case update of
+                RenderTable →
+                  map (Algebra.Push ∘ renderRow) state.rows
+
+                UpdateTableRows moves →
+                  moves
+
+                _ →
+                  []
           ]
       ]
 
@@ -167,21 +186,24 @@ updater dispatch { event, state }
           cmp ∷ ∀ x. Ord x ⇒ x → x → Ordering
           cmp = if willAscend then compare else flip compare
 
-          { state: rows, moves }
-              = state.rows # PH.sortBy case selection of
-                  Name   → cmp `on` _.name
-                  Age    → cmp `on` _.age
-                  Origin → cmp `on` _.origin
-                  Season → cmp `on` _.season
+          comparator
+            = case selection of
+                Name   → cmp `on` _.name
+                Age    → cmp `on` _.age
+                Origin → cmp `on` _.origin
+                Season → cmp `on` _.season
+
+          moves
+            = Algebra.sortBy comparator state.rows
 
           state'
             = { header: selection
               , isAscending: willAscend
-              , rows: []
+              , rows: sortBy comparator state.rows
               }
         in do
           dispatch \_ →
-            { update: UpdateTableRows []
+            { update: UpdateTableRows moves
             , state: state'
             }
 

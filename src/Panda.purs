@@ -14,7 +14,7 @@ import DOM.Node.Types             (Node) as DOM
 import Effect                     (Effect)
 import Panda.Bootstrap            (bootstrap)
 import Panda.Internal.Types       as Types
-import Panda.Internal.Types       (Application) as ExportedTypes
+import Panda.Internal.Types       (Application, ShouldUpdate(..)) as ExportedTypes
 
 import Panda.Prelude
 

@@ -1,5 +1,6 @@
 module Panda.Builders.Properties
   ( module Producers
+  , module Watchers
 
   , accept
   , action
@@ -104,6 +105,7 @@ module Panda.Builders.Properties
 
 import Panda.Internal.Types              as Types
 import Panda.Builders.Property.Producers as Producers
+import Panda.Builders.Property.Watchers  as Watchers
 
 -- | A fully-polymorphic property.
 type StaticProperty

@@ -8,6 +8,7 @@
   },
   "scripts": {
     "pscid": "pscid",
-    "tags": "purs docs --format ctags './**/*.purs' > tags"
+    "tags": "purs docs --format ctags './**/*.purs' > tags",
+    "test": "pulp build -m Test.Main --to test/dist.js -I test"
   }
 }
