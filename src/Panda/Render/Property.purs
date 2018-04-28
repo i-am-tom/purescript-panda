@@ -1,18 +1,17 @@
 module Panda.Render.Property where
 
-import Control.Monad.Eff          (Eff)
-import Control.Plus               (empty)
-import Control.Monad.Eff.Ref      as Ref
-import DOM (DOM)
-import DOM.Event.EventTarget      (addEventListener, eventListener, removeEventListener) as DOM
-import DOM.Event.Types            (Event, EventType) as DOM
-import DOM.HTML.Event.EventTypes  as DOM.Events
-import DOM.Node.Element           (removeAttribute, setAttribute) as DOM
-import DOM.Node.Types             (Element, elementToEventTarget) as DOM
-import Data.String                (drop, toLower)
-import Effect                     (Effect)
-import FRP.Event                  (create) as FRP
-import Panda.Internal.Types       as Types
+import Control.Plus              (empty)
+import Control.Monad.Eff.Ref     as Ref
+import DOM.Event.EventTarget     (addEventListener, eventListener, removeEventListener) as DOM
+import DOM.Event.Types           (Event, EventType) as DOM
+import DOM.HTML.Event.EventTypes as DOM.Events
+import DOM.Node.Element          (removeAttribute, setAttribute) as DOM
+import DOM.Node.Types            (Element, elementToEventTarget) as DOM
+import Data.String               (drop, toLower)
+import Effect                    (Effect)
+import FRP.Event                 (create, subscribe) as FRP
+import Panda.Internal.Types      as Types
+import Unsafe.Coerce             (unsafeCoerce)
 
 import Panda.Prelude
 
@@ -54,39 +53,39 @@ producerToEventType = case _ of
 
 producerToString ∷ Types.Producer → String
 producerToString
-  = toLower ∘ drop 2 ∘ show
+  = toLower
+  ∘ drop 2
+  ∘ show
 
 -- | Effectfully add an event listener to a DOM node.
 
 addEventListener
-  ∷ ∀ eff
-  . Types.Producer
+  ∷ Types.Producer
   → DOM.Element
-  → (DOM.Event → Eff (dom ∷ DOM | eff) Unit)
+  → (DOM.Event → Effect Unit)
   → Effect Unit
 
 addEventListener producer element listener
-  = effToEffect $ DOM.addEventListener eType eListener false eTarget
+  = effToEffect (DOM.addEventListener eType eListener false eTarget)
   where
+    eListener = (unsafeCoerce DOM.eventListener) listener
     eType     = producerToEventType producer
-    eListener = DOM.eventListener listener
     eTarget   = DOM.elementToEventTarget element
 
 -- | Effectfully remove an event listener from a DOM node.
 
 removeEventListener
-  ∷ ∀ eff
-  . Types.Producer
+  ∷ Types.Producer
   → DOM.Element
-  → (DOM.Event → Eff (dom ∷ DOM | eff) Unit)
+  → (DOM.Event → Effect Unit)
   → Effect Unit
 
 removeEventListener producer element listener
-  = effToEffect $ DOM.removeEventListener eType eListener false eTarget
+  = effToEffect (DOM.removeEventListener eType eListener false eTarget)
   where
-    eType     = producerToEventType producer
-    eListener = DOM.eventListener listener
+    eListener = (unsafeCoerce DOM.eventListener) listener
     eTarget   = DOM.elementToEventTarget element
+    eType     = producerToEventType producer
 
 -- | Render a fixed static property to an element.
 
@@ -96,6 +95,7 @@ renderStaticFixed
   → String
   → String
   → Effect (Maybe (Types.EventSystem update state event))
+
 renderStaticFixed element key value = do
   effToEffect (DOM.setAttribute key value element)
 
@@ -117,7 +117,7 @@ renderStaticProducer
 renderStaticProducer element key onEvent = do
   { push, event } ← effToEffect FRP.create
 
-  let handler = traverse_ push ∘ onEvent
+  let handler = traverse_ (map effToEffect push) ∘ onEvent
   addEventListener key element handler
 
   pure ∘ Just $ Types.EventSystem
@@ -138,10 +138,8 @@ renderDynamic
   → Effect (Maybe (Types.EventSystem update state event))
 
 renderDynamic element watcher = do
-  { event: producerEvents, push: registerProducerEvent }
-    ← effToEffect FRP.create
-
-  propertyRef ← effToEffect $ Ref.newRef Nothing
+  subproducer ← effToEffect FRP.create
+  propertyRef ← effToEffect (Ref.newRef Nothing)
 
   pure ∘ Just $ Types.EventSystem
     { cancel: do
@@ -150,13 +148,15 @@ renderDynamic element watcher = do
         for_ current \(Types.EventSystem { cancel }) →
           cancel
 
-    , events: producerEvents
+    , events: subproducer.event
     , handleUpdate: \update → do
         let
-          clearListener
-              = effToEffect (Ref.readRef propertyRef)
-            >>= traverse_ \(Types.EventSystem { cancel }) →
-                  cancel
+          clearListener = do
+            eventSystem ← effToEffect (Ref.readRef propertyRef)
+
+            for_ eventSystem \(Types.EventSystem { cancel }) → do
+              effToEffect (Ref.writeRef propertyRef Nothing)
+              cancel
 
         case watcher update of
           Types.Ignore →
@@ -166,10 +166,22 @@ renderDynamic element watcher = do
             clearListener
 
           Types.SetTo nextProperty → do
+            property ← render element nextProperty
             clearListener
 
-            property ← render element nextProperty
-            effToEffect (Ref.writeRef propertyRef property)
+            for_ property \(Types.EventSystem system) → do
+              canceller
+                ← effToEffect
+                $ FRP.subscribe system.events
+                $ subproducer.push
+
+              let
+                updated
+                  = Just $ Types.EventSystem system
+                      { cancel = system.cancel *> effToEffect canceller
+                      }
+
+              effToEffect (Ref.writeRef propertyRef updated)
     }
 
 render

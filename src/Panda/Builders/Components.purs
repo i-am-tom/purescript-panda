@@ -1,5 +1,5 @@
 module Panda.Builders.Components
-  ( module Watchers
+  ( module Collection
 
   , a
   , a'
@@ -434,8 +434,8 @@ module Panda.Builders.Components
   , wbr_
   ) where
 
-import Panda.Internal.Types              as Types
-import Panda.Builders.Component.Watchers as Watchers
+import Panda.Internal.Types                as Types
+import Panda.Builders.Component.Collection as Collection
 
 -- | A fully-polymorphic component (and therefore either an element or text).
 

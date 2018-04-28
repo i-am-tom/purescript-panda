@@ -9,6 +9,10 @@ import Panda.Internal.Types      as Types
 
 import Panda.Prelude
 
+-- | Embed an application into a component, allowing for it to exist in a
+-- | larger application. This also gives us the opportunity to filter out
+-- | events and updates in which we're not so interested.
+
 delegate
   ∷ ∀ update subupdate state substate event subevent
   . { update ∷ update   → Maybe subupdate
@@ -19,5 +23,6 @@ delegate
   → Types.Component update state event
 
 delegate focus application
-  = Types.Delegate ∘ Types.mkComponentDelegateX
+  = Types.Delegate
+  ∘ Types.mkComponentDelegateX
   $ Types.ComponentDelegate { application, focus }

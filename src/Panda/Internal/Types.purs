@@ -180,6 +180,31 @@ newtype EventSystem update state event
           → Effect Unit
       }
 
+cancel
+  ∷ ∀ update state event
+  . EventSystem update state event
+  → Effect Unit
+
+cancel (EventSystem system)
+  = system.cancel
+
+events
+  ∷ ∀ update state event
+  . EventSystem update state event
+  → FRP.Event event
+
+events (EventSystem system)
+  = system.events
+
+handleUpdate
+  ∷ ∀ update state event
+  . EventSystem update state event
+  → { update ∷ update, state ∷ state }
+  → Effect Unit
+
+handleUpdate (EventSystem system)
+  = system.handleUpdate
+
 -- | TODO: Monoid instance for Effect.
 
 instance semigroupEventSystem

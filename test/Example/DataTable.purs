@@ -11,7 +11,7 @@ import Control.Monad.Eff         (Eff)
 import Control.Monad.Eff.Class   (liftEff)
 import Control.Monad.Eff.Console (logShow)
 import Control.Plus              (empty)
-import Data.Array                (sortBy, sortWith)
+import Data.Array                (sortWith)
 import Data.Algebra.Array        as Algebra
 import Data.Either               (Either(..))
 import Data.Foldable             (any)
@@ -170,42 +170,31 @@ view
 -- | Updater for our state object.
 updater ∷ P.Updater Update State Event
 updater dispatch { event, state }
-  = case event of
+  = dispatch \_ → case event of
       SearchEntered input →
-        dispatch
-          { update: FilterTable input
-          , state: _
-          }
+        { update: FilterTable input
+        , state
+        }
 
-      SortSelected selection →
+      SortSelected header →
         let
-          willAscend
-            = selection /= state.header
-                || not state.isAscending
-
           cmp ∷ ∀ x. Ord x ⇒ x → x → Ordering
-          cmp = if willAscend then compare else flip compare
+          cmp = if isAscending then compare else flip compare
 
-          comparator
-            = case selection of
-                Name   → cmp `on` _.name
-                Age    → cmp `on` _.age
-                Origin → cmp `on` _.origin
-                Season → cmp `on` _.season
+          isAscending = header /= state.header || not state.isAscending
 
-          moves
-            = Algebra.sortBy comparator state.rows
+          comparator = case header of
+            Name   → cmp `on` _.name
+            Age    → cmp `on` _.age
+            Origin → cmp `on` _.origin
+            Season → cmp `on` _.season
 
-          state'
-            = { header: selection
-              , isAscending: willAscend
-              , rows: sortBy comparator state.rows
-              }
-        in do
-          dispatch \_ →
-            { update: UpdateTableRows moves
-            , state: state'
-            }
+          { state: rows, moves } = PH.sortBy comparator state.rows
+
+        in
+          { update: UpdateTableRows moves
+          , state: { header, isAscending, rows }
+          }
 
 -- | The Panda application.
 application ∷ Array Queen → Effect Unit

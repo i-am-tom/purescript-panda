@@ -25,7 +25,10 @@
   "devDependencies": {
     "purescript-console": "^3.0.0",
     "purescript-debug": "^3.0.0",
-    "purescript-simple-json": "^2.0.1"
+    "purescript-simple-json": "^2.0.1",
+    "purescript-quickcheck": "^4.7.0",
+    "purescript-spec": "^2.0.0",
+    "purescript-spec-quickcheck": "^2.0.0"
   },
   "repository": {
     "type": "git",

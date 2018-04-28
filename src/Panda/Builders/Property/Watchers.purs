@@ -2,8 +2,6 @@ module Panda.Builders.Property.Watchers where
 
 import Panda.Internal.Types as Types
 
-import Panda.Prelude
-
 watch
   ∷ ∀ update state event
   . ( { update ∷ update, state ∷ state }
@@ -15,7 +13,7 @@ watch listener
   = Types.Dynamic listener
 
 when
-  ∷ ∀ value update state event
+  ∷ ∀ update state event
   . ({ update ∷ update, state ∷ state } → Boolean)
   → ({ update ∷ update, state ∷ state } → Types.Property update state event)
   → Types.Property update state event

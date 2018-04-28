@@ -4,22 +4,18 @@ module Panda.Prelude
 
   , (∘)
 
-  , document
   , effToEffect
   , effectToEff
   ) where
 
 import Control.Monad.Eff (Eff)
-import DOM.HTML          (window) as DOM
-import DOM.HTML.Window   (document) as DOM
-import DOM.HTML.Types    (htmlDocumentToDocument)
-import DOM.Node.Types    (Document)
 import Effect            (Effect)
 import Unsafe.Coerce     (unsafeCoerce)
 
 import Data.Foldable    (for_, traverse_) as Exports
 import Data.Traversable (for, traverse) as Exports
 import Data.Maybe       (Maybe(..), fromMaybe, maybe) as Exports
+import Debug.Trace      (spy) as Exports
 
 import Prelude
 
@@ -27,7 +23,6 @@ import Prelude
 -- | dictionaries, which this function will avoid.
 
 effToEffect ∷ ∀ eff. Eff eff ~> Effect
-
 effToEffect
   = unsafeCoerce
 
@@ -38,16 +33,6 @@ effToEffect
 effectToEff ∷ ∀ eff. Effect ~> Eff eff
 effectToEff
   = unsafeCoerce
-
--- | Get the `document` object from the DOM. This happens often enough that
--- | this felt morally defensible.
-
-document ∷ Effect Document
-
-document
-  = effToEffect
-  ∘ map htmlDocumentToDocument
-  $ DOM.window >>= DOM.document
 
 -- | Unicode composition. `:iabbrev` is magic.
 

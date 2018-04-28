@@ -2,13 +2,13 @@ module Panda.Bootstrap
   ( bootstrap
   ) where
 
-import Control.Alt                ((<|>))
-import Control.Monad.Eff.Ref      as Ref
-import DOM.Node.Types             (Node) as DOM
-import Effect                     (Effect)
-import FRP.Event                  (Event, subscribe) as FRP
-import Panda.Internal.Types       as Types
-import Panda.Render.Component     as Component
+import Control.Alt            ((<|>))
+import Control.Monad.Eff.Ref  as Ref
+import DOM.Node.Types         as DOM
+import Effect                 (Effect)
+import FRP.Event              as FRP
+import Panda.Internal.Types   as Types
+import Panda.Render.Component as Component
 
 import Panda.Prelude
 
@@ -18,23 +18,21 @@ import Panda.Prelude
 
 bootstrap
   ∷ ∀ update state event
-  . Types.Application update state event
+  . DOM.Document
+  → Types.Application update state event
   → Effect
       { node   ∷ DOM.Node
       , system ∷ Maybe (Types.EventSystem update state event)
       }
 
-bootstrap app = do
-  result ← Component.render bootstrap app.view
+bootstrap document app = do
+  result ← Component.render document (bootstrap document) app.view
 
   case result.system of
     Nothing →
       -- Applications that are either totally static (_or_ produce events
       -- without reading updates) don't need any sort of event system.
-      pure
-        { node: result.node
-        , system: Nothing
-        }
+      pure { node: result.node, system: Nothing }
 
     Just (Types.EventSystem system) → do
        -- We could do this with a stream (and originally did!), but it's much
@@ -62,9 +60,12 @@ bootstrap app = do
       system.handleUpdate app.initial
 
       pure $ result
-        { system = Just ∘ Types.EventSystem $ system
-            { cancel = do
-                system.cancel
-                effToEffect cancel
-            }
+        { system
+            = Just
+            ∘ Types.EventSystem
+            $ system
+                { cancel = do
+                    system.cancel
+                    effToEffect cancel
+                }
         }

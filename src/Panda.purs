@@ -7,7 +7,7 @@ module Panda
 
 import DOM.HTML                   (window) as DOM
 import DOM.HTML.Document          (body) as DOM
-import DOM.HTML.Types             (htmlElementToNode) as DOM
+import DOM.HTML.Types             (htmlDocumentToDocument, htmlElementToNode) as DOM
 import DOM.HTML.Window            (document) as DOM
 import DOM.Node.Node              (appendChild) as DOM
 import DOM.Node.Types             (Node) as DOM
@@ -20,8 +20,8 @@ import Panda.Prelude
 
 -- | A little convenient alias to make your signatures shorter. Note that it is
 -- | only an alias, so it will be expanded in error messages. If that _does_
--- | happen, chances are that your types for `update`, `state`, and `event` are
--- | wrong.
+-- | happen, chances are that one or more of your types for `update`, `state`,
+-- | and `event` are wrong.
 
 type Updater update state event
   = ((state → { update ∷ update, state ∷ state }) → Effect Unit)
@@ -57,6 +57,9 @@ runApplicationInNode
   → Effect (Maybe (Types.EventSystem update state event))
 
 runApplicationInNode configuration parent = do
-  { system, node } ← bootstrap configuration
+  document ← effToEffect (DOM.window >>= DOM.document)
+  let document' = DOM.htmlDocumentToDocument document
+  { system, node } ← bootstrap document' configuration
+
   effToEffect (DOM.appendChild node parent) $> system
 

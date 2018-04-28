@@ -3,7 +3,7 @@ module Panda.Render.Component where
 import Control.Monad.Eff.Ref        as Ref
 import DOM.Node.Document            (createElement, createTextNode) as DOM
 import DOM.Node.Node                (appendChild) as DOM
-import DOM.Node.Types               (Node, elementToNode, textToNode) as DOM
+import DOM.Node.Types               (Document, Node, elementToNode, textToNode) as DOM
 import Data.Array                   as Array
 import Data.Filterable              (filterMap)
 import Data.Foldable                (fold)
@@ -19,7 +19,8 @@ import Panda.Prelude
 
 render
   ∷ ∀ update state event
-  . ( ∀ update' state' event'
+  . DOM.Document
+  → ( ∀ update' state' event'
     . Types.Application update' state' event'
     → Effect
         { node   ∷ DOM.Node
@@ -32,17 +33,14 @@ render
       , system ∷ Maybe (Types.EventSystem update state event)
       }
 
-render bootstrap = case _ of
+render document bootstrap = case _ of
   Types.Text text → do
-    document' ← document
-    node      ← effToEffect (DOM.createTextNode text document')
+    node      ← effToEffect (DOM.createTextNode text document)
 
     pure { node: DOM.textToNode node, system: Nothing }
 
   Types.Element { tagName, properties, children } → do
-    document' ← document
-
-    element ← effToEffect $ DOM.createElement tagName document'
+    element ← effToEffect $ DOM.createElement tagName document
     let parentNode = DOM.elementToNode element
 
     -- Attach all the properties to the newly-created element.
@@ -56,7 +54,7 @@ render bootstrap = case _ of
     -- Set up all the children's systems and nodes...
 
     renderedChildren
-      ← traverse (render bootstrap)
+      ← traverse (render document bootstrap)
       $ children
 
     -- TODO: s/map fold $ for/flip foldMap/ once Effect is Monoid.
@@ -70,9 +68,7 @@ render bootstrap = case _ of
       }
 
   Types.Collection { tagName, properties, watcher } → do
-    document' ← document
-
-    element ← effToEffect $ DOM.createElement tagName document'
+    element ← effToEffect $ DOM.createElement tagName document
     let parent = DOM.elementToNode element
 
     eventSystems ← effToEffect (Ref.newRef [])
@@ -100,7 +96,7 @@ render bootstrap = case _ of
                       execute
                         { parent
                         , systems
-                        , render: render bootstrap
+                        , render: render document bootstrap
                         , update: instruction
                         }
 
