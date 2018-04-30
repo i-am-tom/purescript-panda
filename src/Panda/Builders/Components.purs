@@ -494,6 +494,9 @@ make tagName properties children
       , children
       }
 
+-- | Make a "collection" element from some container. These are collections in
+-- | the Panda sense - element containers that are open to incremental updates.
+
 collection ∷ String → Collection
 collection tagName properties watcher
   = Types.Collection

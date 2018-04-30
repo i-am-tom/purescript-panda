@@ -17,6 +17,9 @@ import Partial.Unsafe               (unsafePartial)
 
 import Panda.Prelude
 
+-- | Given a DOM document and a bootstrapping function, render a component to
+-- | a DOM node, along with the corresponding event system.
+
 render
   ∷ ∀ update state event
   . DOM.Document

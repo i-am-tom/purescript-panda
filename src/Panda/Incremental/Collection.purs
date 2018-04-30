@@ -10,12 +10,17 @@ import Panda.Internal.Types      as Types
 
 import Panda.Prelude
 
+-- | Convenience synonym for incremental renderers.
+
 type Renderer update state event
   = Types.Component update state event
   → Effect
       { node   ∷ DOM.Node
       , system ∷ Maybe (Types.EventSystem update state event)
       }
+
+-- | Execute an incremental `update` on the children of some `parent`, along
+-- | with their `systems`, and `render` any new inserts.
 
 execute
   ∷ ∀ update state event

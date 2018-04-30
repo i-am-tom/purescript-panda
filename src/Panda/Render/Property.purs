@@ -184,6 +184,10 @@ renderDynamic element watcher = do
               effToEffect (Ref.writeRef propertyRef updated)
     }
 
+-- | Given an element, along with some property DSL value, render the
+-- | calculated property to the element, which may involve some handling of
+-- | event listeners.
+
 render
   ∷ ∀ update state event
   . DOM.Element
