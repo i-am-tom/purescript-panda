@@ -6,29 +6,30 @@ module Test.Example.DataTable where
 -- | user to sort (and reverse sort) its contents by clicking the headers. You
 -- | can also filter the input by the search at the top.
 
-import Control.Monad.Aff         (runAff_)
-import Control.Monad.Eff         (Eff)
-import Control.Monad.Eff.Class   (liftEff)
-import Control.Monad.Eff.Console (logShow)
-import Control.Plus              (empty)
-import Data.Array                (sortWith)
-import Data.Algebra.Array        as Algebra
-import Data.Either               (Either(..))
-import Data.Foldable             (any)
-import Data.Function             (on)
-import Data.Generic.Rep          (class Generic)
-import Data.Generic.Rep.Show     (genericShow)
-import Data.Monoid               (mempty)
-import Data.String               (Pattern(..), contains, toLower)
-import Effect                    (Effect)
-import Network.HTTP.Affjax       (get)
-import Simple.JSON               (readJSON)
+import Control.Plus                 (empty)
+import Data.Algebra.Array           as Algebra
+import Data.Array                   (sortWith)
+import Data.Either                  (Either(..))
+import Data.Foldable                (any)
+import Data.Function                (on)
+import Data.Generic.Rep             (class Generic)
+import Data.Generic.Rep.Show        (genericShow)
+import Data.Maybe                   (Maybe(..))
+import Data.String                  (Pattern(..), contains, toLower)
+import Effect                       (Effect)
+import Effect.Aff                   (runAff_)
+import Effect.Class                 (liftEffect)
+import Effect.Console               (logShow)
+import Network.HTTP.Affjax          (get)
+import Network.HTTP.Affjax.Response (string)
+import Simple.JSON                  (readJSON)
 
 import Panda                     as P
 import Panda.HTML                as PH
 import Panda.Property            as PP
 
-import Panda.Prelude
+import Debug.Trace (spy)
+import Prelude
 
 -- | A queen's row is defined by her name, age at time of the given season, and
 -- | the town from which she originates.
@@ -46,7 +47,7 @@ type Queen
 data Update
   = FilterTable String
   | RenderTable
-  | UpdateTableRows (Array (PH.ComponentUpdate Update State Event))
+  | UpdateTableRows (Array (PH.HTMLUpdate Update Event State))
 
 -- | The state of this application. Note we don't include the search string, as
 -- | it can exist within the updates alone.
@@ -78,7 +79,7 @@ headers = [ Name, Age, Origin, Season ]
 
 -- | Make a header in the data table.
 
-makeTableHeader ∷ Header → PH.Component Update State Event
+makeTableHeader ∷ Header → PH.HTML Update Event State
 makeTableHeader header
   = PH.strong
       [ PP.when (\u → u.state.header == header) \{ state } →
@@ -92,7 +93,7 @@ makeTableHeader header
 
 matches ∷ String → Queen → Boolean
 matches search { name, age, origin, season }
-  = any (contains ∘ Pattern ∘ toLower $ search)
+  = any (contains $ Pattern $ toLower search)
       [ toLower name
       , show age
       , toLower origin
@@ -100,13 +101,13 @@ matches search { name, age, origin, season }
       ]
 
 -- | Render a single row in the data table.
-renderRow ∷ ∀ state event. Queen → PH.Component Update state event
+renderRow ∷ Queen → PH.HTML Update Event State
 renderRow queen@{ name, age, origin, season }
   = PH.tr
-      [ PP.watch \{ update } →
-          case update of
+      [ PP.watch \{ input } →
+          case input of
             FilterTable str →
-              if str `matches` queen
+              spy "hello?" if str `matches` queen
                 then P.Clear
                 else P.SetTo (PP.className "hidden")
             _ →
@@ -134,12 +135,12 @@ renderRow queen@{ name, age, origin, season }
     season' = show season
 
 -- | The main view of our data table.
-view ∷ PH.Component Update State Event
+view ∷ PH.HTML Update Event State
 view
   = PH.section_
       [ PH.input
           [ PP.type_ "search"
-          , PP.onInput' (Just ∘ SearchEntered)
+          , PP.onInput' (Just <<< SearchEntered)
           , PP.placeholder "Search..."
           ]
 
@@ -154,10 +155,10 @@ view
                     ]
               ]
 
-          , PH.tbody'_ \{ update, state } →
-              case update of
+          , PH.tbody'_ \{ input, state } →
+              case input of
                 RenderTable →
-                  map (Algebra.Push ∘ renderRow) state.rows
+                  map (Algebra.Push <<< renderRow) state.rows
 
                 UpdateTableRows moves →
                   moves
@@ -168,11 +169,11 @@ view
       ]
 
 -- | Updater for our state object.
-updater ∷ P.Updater Update State Event
-updater dispatch { event, state }
-  = dispatch \_ → case event of
+updater ∷ P.Updater Update Void Event State
+updater emit dispatch { message, state }
+  = dispatch \_ → case message of
       SearchEntered input →
-        { update: FilterTable input
+        { input: FilterTable input
         , state
         }
 
@@ -192,7 +193,7 @@ updater dispatch { event, state }
           { state: rows, moves } = PH.sortBy comparator state.rows
 
         in
-          { update: UpdateTableRows moves
+          { input: UpdateTableRows moves
           , state: { header, isAscending, rows }
           }
 
@@ -207,23 +208,22 @@ application queens
               , isAscending: true
               , rows: sortWith _.name queens
               }
-          , update: RenderTable
+          , input: RenderTable
           }
       , subscription: empty
       , update: updater
       }
 
 -- | Run the actual application!
-main ∷ Eff _ Unit
+main ∷ Effect Unit
 main = runAff_ mempty do
-  queens ← get "Example/queens.json"
+  queens ← get string "Example/queens.json"
 
   case readJSON queens.response of
     Left error →
-      liftEff (logShow error)
+      liftEffect (logShow error)
 
     Right result →
-      liftEff
-        ∘ effectToEff
-        ∘ application
+      liftEffect
+        $ application
         $ result

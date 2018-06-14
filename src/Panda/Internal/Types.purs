@@ -1,108 +1,136 @@
 module Panda.Internal.Types where
 
-import Control.Alternative   ((<|>))
-import DOM.Event.Types       (Event) as DOM
-import Data.Algebra.Array    as Algebra.Array
-import Data.Generic.Rep      (class Generic)
-import Data.Generic.Rep.Show (genericShow)
-import Effect                (Effect)
-import FRP.Event             (Event) as FRP
-import Unsafe.Coerce         (unsafeCoerce)
+import Control.Alternative      ((<|>))
+import Control.Plus             (empty)
+import Data.Algebra.Array       as Algebra.Array
+import Data.Foldable            (foldl)
+import Data.Generic.Rep         (class Generic)
+import Data.Generic.Rep.Show    (genericShow)
+import Data.Maybe               (Maybe)
+import Data.String              as String
+import Effect                   (Effect)
+import FRP.Event                (Event) as FRP
+import Web.Event.Internal.Types (Event) as DOM
+import Unsafe.Coerce            (unsafeCoerce)
 
-import Panda.Prelude
+import Prelude
 
--- | A Panda application looks very similar to an Elm application: you provide
--- | a `view`, a `subscription` to any external events, an `initial` state and
--- | update, and an `update` function for dispatching updates. The signature
--- | looks a little ugly, but it's essentially a `dispatch` function and
--- | whatever event originally triggered the `update` call, along with the
--- | state at that moment in time. `dispatch` takes a callback that will
--- | receive the state at _that_ current moment in time. Why? For operations
--- | involving AJAX, for example, this allows us to be more intelligent about
--- | incremental updates because we can see how state has changed since we
--- | began.
+-- | Type signatures are really ugly for `update`, so we have this helpful
+-- | little alias. Should you find a type error inside this, chances are that
+-- | you have input/output/message/state wrong or mixed up.
 
-type Application update state event
-  = { view         ∷ Component update state event
-    , subscription ∷ FRP.Event event
-    , initial      ∷ { update ∷ update, state ∷ state }
-    , update
-        ∷ ((state → { update ∷ update, state ∷ state }) → Effect Unit)
-          → { event ∷ event, state ∷ state }
-          → Effect Unit
+type Updater input output message state
+  = (output → Effect Unit)
+  → ((state → { input ∷ input, state ∷ state }) → Effect Unit)
+  → { message ∷ message, state ∷ state }
+  → Effect Unit
+
+-- | A component in Panda is a unit capable of running as an independent
+-- | application. This is often not what you want, though, so `delegate` can be
+-- | used to embed applications inside others, providing that we have a way to
+-- | convert parent updates into child updates, and child events into parent
+-- | messages.
+
+type Component input output message state
+  = { view         ∷ HTML input message state
+    , subscription ∷ FRP.Event message
+    , initial      ∷ { input ∷ input, state ∷ state }
+    , update       ∷ Updater input output message state
     }
 
--- | Updates to a collection are done via this incremental algebra, which
--- | reifies all the regular mutating array operations.
+-- | Convenience type synonym for any update sets to HTML elements.
 
-type ComponentUpdate update state event
-  = Algebra.Array.Update (Component update state event)
+type HTMLUpdate input message state
+  = Algebra.Array.Update (HTML input message state)
 
--- | A component in the Panda DSL, which is either text, a static element (with
--- | more components as children), or an incrementally-updated collection of
--- | components.
+-- | Panda categorises HTML elements into four distinct types:
+-- | - An `Element` is the regular element we all know and love: it has a tag
+-- |   name, some properties, and some children. Its children are fixed.
+-- | - A `Collection` is a regular element, with one small change: the children
+-- |   of this element must be controlled via an update algebra.
+-- | - `Text` is just that: a string of text that becomes a textFragment within
+-- |   the DOM.
+-- | - A `delegate` is a bit of a weird one, as it doesn't actually have its
+-- |   own "HTML form". Instead, it is another Panda application embedded
+-- |   within this one, and thus is rendered to be whatever is stored within
+-- |   that element.
 
-data Component update state event
+data HTML input message state
 
   = Element
       { tagName    ∷ String
-      , properties ∷ Array (Property update state event)
-      , children   ∷ Array (Component update state event)
+      , properties ∷ Array (Property input message state)
+      , children   ∷ Array (HTML input message state)
       }
 
   | Collection
       { tagName    ∷ String
-      , properties ∷ Array (Property update state event)
+      , properties ∷ Array (Property input message state)
       , watcher
-          ∷ { update ∷ update, state ∷ state }
-          → Array (ComponentUpdate update state event)
+          ∷ { input ∷ input, state ∷ state }
+          → Array (HTMLUpdate input message state)
       }
 
   | Text String
 
-  | Delegate (ComponentDelegateX update state event)
+  | Delegate (HTMLDelegateX input message)
 
-newtype ComponentDelegate update state event subupdate substate subevent
-  = ComponentDelegate
+-- | Before existentialising, a delegate is indexed by six types: all the types
+-- | of the sub-application, plus the parent's input and message types. The
+-- | idea here is that we map the `output` values of the _inner_ application to
+-- | the `message` type of the _outer_ application, allowing us to handle
+-- | events thrown within delegate applications.
+
+newtype HTMLDelegate input message subinput suboutput submessage substate
+  = HTMLDelegate
       { focus
-          ∷ { state  ∷ state    → substate
-            , update ∷ update   → Maybe subupdate
-            , event  ∷ subevent → Maybe event
+          ∷ { input  ∷ input     → Maybe subinput
+            , output ∷ suboutput → Maybe message
             }
 
-      , application ∷ Application subupdate substate subevent
+      , application ∷ Component subinput suboutput submessage substate
       }
 
-foreign import data ComponentDelegateX ∷ Type → Type → Type → Type
+-- | An existentialised delegate is simply indexed by the input type and
+-- | message type that, respectively, it can map from and to.
 
--- | Existentialise a component delelgate.
+foreign import data HTMLDelegateX ∷ Type → Type → Type
 
-mkComponentDelegateX
-  ∷ ∀ update state event subupdate substate subevent
-  . ComponentDelegate update state event subupdate substate subevent
-  → ComponentDelegateX update state event
+-- | Rather than the rank-2 encoding, the transformation from a delegate to an
+-- | existentialised delegate is just an unsafe coercion to "forget" those type
+-- | variables.
 
-mkComponentDelegateX
+mkHTMLDelegateX
+  ∷ ∀ input message subinput suboutput submessage substate
+  . HTMLDelegate input message subinput suboutput submessage substate
+  → HTMLDelegateX input message
+
+mkHTMLDelegateX
   = unsafeCoerce
 
--- | Unpack an existential component delegate.
+-- | To unpack an existentialised delegate, we have to operate as though we
+-- | have _no_ knowledge of the sub-application, and our only means of
+-- | communicating with it are via the two functions supplied in the `focus`
+-- | record. This process serves both to simplify the types _and_ prevent some
+-- | obvious end user mistakes.
 
-runComponentDelegateX
-  ∷ ∀ update state event result
-  . ( ∀ subupdate substate subevent
-    . ComponentDelegate update state event subupdate substate subevent
+runHTMLDelegateX
+  ∷ ∀ input message result
+  . ( ∀ subinput suboutput submessage substate
+    . HTMLDelegate input message subinput suboutput submessage substate
     → result
     )
-  → ComponentDelegateX update state event
+  → HTMLDelegateX input message
   → result
 
-runComponentDelegateX f
-  = f ∘ unsafeCoerce
+runHTMLDelegateX f
+  = f <<< unsafeCoerce
 
--- | A property is either a fixed key/value pair, an event type and
--- | corresponding handler, or a dynamic producer of properties.
+-- | A Panda property is simpler than an HTML element. Either we're some fixed
+-- | value, some "event-triggering" value, or some dynamically-determined
+-- | property based on the current input and state.
 
-data Property update state event
+data Property input message state
 
   = Fixed
       { key   ∷ String
@@ -111,24 +139,23 @@ data Property update state event
 
   | Producer
       { key     ∷ Producer
-      , onEvent ∷ DOM.Event → Maybe event
+      , onEvent ∷ DOM.Event → Maybe message
       }
 
   | Dynamic
-      ( { update ∷ update, state ∷ state }
-      → ShouldUpdate (Property update state event)
+      ( { input ∷ input, state ∷ state }
+      → ShouldUpdate (Property input message state)
       )
 
--- | Whenever we call our dynamic property watcher, the watcher can choose
--- | whether it cares about the current environment, whether it wants to add a
--- | new property, or delete all those that it has touched.
+-- | Should we update? When a dynamic property receives an input, this algebra
+-- | is used to convey whether or not to update its contents, or whether this
+-- | update can just be ignored.
 
-data ShouldUpdate a
-  = Clear
-  | Ignore
-  | SetTo a
+data ShouldUpdate a = Clear | Ignore | SetTo a
 
--- | A sum of all the event hooks that can be used within Panda.
+-- | Event-producing element properties. When assigning `Producer` properties,
+-- | one of the following must be provided to specify the event to which you'd
+-- | like to bind the action.
 
 data Producer
   = OnBlur
@@ -146,7 +173,6 @@ data Producer
   | OnFocus
   | OnInput
   | OnKeyDown
-  | OnKeyPress
   | OnKeyUp
   | OnMouseDown
   | OnMouseEnter
@@ -155,63 +181,99 @@ data Producer
   | OnMouseOver
   | OnMouseOut
   | OnMouseUp
-  | OnScroll
   | OnSubmit
-  | OnTransitionEnd
 
-derive instance eqProducer      ∷ Eq Producer
-derive instance genericProducer ∷ Generic Producer _
-derive instance ordProducer     ∷ Ord Producer
+derive instance eqProducer  ∷ Eq Producer
 
-instance showProducer ∷ Show Producer where
-  show = genericShow
+-- | Convert a Producer to its html attribute name.
 
--- | An event system defines the ways in which an element can interact with its
--- | environment.
+producerToAttribute = case _ of
+  OnBlur        → "blur"
+  OnChange      → "change"
+  OnClick       → "click"
+  OnDoubleClick → "doubleclick"
+  OnDrag        → "drag"
+  OnDragEnd     → "dragend"
+  OnDragEnter   → "dragenter"
+  OnDragLeave   → "dragleave"
+  OnDragOver    → "dragover"
+  OnDragStart   → "dragstart"
+  OnDrop        → "drop"
+  OnError       → "error"
+  OnFocus       → "focus"
+  OnInput       → "input"
+  OnKeyDown     → "keydown"
+  OnKeyUp       → "keyup"
+  OnMouseDown   → "mousedown"
+  OnMouseEnter  → "mouseenter"
+  OnMouseLeave  → "mouseleave"
+  OnMouseMove   → "mousemove"
+  OnMouseOver   → "mouseover"
+  OnMouseOut    → "mouseout"
+  OnMouseUp     → "mouseup"
+  OnSubmit      → "submit"
 
-newtype EventSystem update state event
-  = EventSystem
-      { cancel ∷ Effect Unit
-      , events ∷ FRP.Event event
-      , handleUpdate
-          ∷ { update ∷ update
-            , state  ∷ state
-            }
-          → Effect Unit
-      }
+-- | An event system is the data structure that Panda uses internally to
+-- | communicate properties of components. We can use this to cancel a system
+-- | (thus removing properties, or children, from some dynamic piece), listen
+-- | for events coming _out_ of a system, or push updates _into_ a system,
+-- | allowing us full control. It's worth noting here that state is handled
+-- | externally, which is not true of bootstrapped applications.
 
-cancel
-  ∷ ∀ update state event
-  . EventSystem update state event
-  → Effect Unit
+type EventSystem input message state
+  = { cancel ∷ Effect Unit
+    , events ∷ FRP.Event message
+    , handleUpdate
+        ∷ { input ∷ input
+          , state ∷ state
+          }
+        → Effect Unit
+    }
 
-cancel (EventSystem system)
-  = system.cancel
+-- | Until I win my quest to make FRP.Event.(<>) equal to FRP.Event.(<|>), this
+-- | system type will have to remain a semi-established monoid. We don't do
+-- | _many_ event system combinations throughout the system, though, so this is
+-- | more of a would-be-nice-in-the-future kind of change.
 
-events
-  ∷ ∀ update state event
-  . EventSystem update state event
-  → FRP.Event event
+-- | An event system that does nothing and controls nothing.
 
-events (EventSystem system)
-  = system.events
+emptySystem
+  ∷ ∀ input message state
+  . EventSystem input message state
 
-handleUpdate
-  ∷ ∀ update state event
-  . EventSystem update state event
-  → { update ∷ update, state ∷ state }
-  → Effect Unit
+emptySystem
+  = { events: empty
+    , handleUpdate: \_ → pure unit
+    , cancel: pure unit
+    }
 
-handleUpdate (EventSystem system)
-  = system.handleUpdate
+-- | Combine two event systems into a single system that delegates to both of
+-- | the input systems.
 
--- | TODO: Monoid instance for Effect.
+combineSystems
+  ∷ ∀ input message state
+  . EventSystem input message state
+  → EventSystem input message state
+  → EventSystem input message state
 
-instance semigroupEventSystem
-    ∷ Semigroup (EventSystem update state event) where
-  append (EventSystem this) (EventSystem that)
-    = EventSystem
-        { events: this.events <|> that.events
-        , cancel: this.cancel *> that.cancel
-        , handleUpdate: this.handleUpdate *> that.handleUpdate
-        }
+combineSystems this that
+  = { cancel: do
+        this.cancel
+        that.cancel
+
+    , handleUpdate: \update → do
+        this.handleUpdate update
+        that.handleUpdate update
+
+    , events: this.events <|> that.events
+    }
+
+-- | Like `mconcat` for `EventSystem`.
+
+foldSystems
+  ∷ ∀ input message state
+  . Array (EventSystem input message state)
+  → EventSystem input message state
+
+foldSystems
+  = foldl combineSystems emptySystem

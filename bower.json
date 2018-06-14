@@ -8,28 +8,18 @@
   "license": "MIT",
   "homepage": "https://github.com/i-am-tom/purescript-panda",
   "dependencies": {
-    "purescript-behaviors": "^6.3.0",
-    "purescript-dom": "^4.15.0",
-    "purescript-eff": "^3.1.0",
-    "purescript-prelude": "^3.1.1",
-    "purescript-refs": "^3.0.0",
-    "purescript-random": "^3.0.0",
-    "purescript-psci-support": "^3.0.0",
-    "purescript-data-algebrae": "^3.1.0",
-    "purescript-simple-json": "^2.0.1",
-    "purescript-affjax": "^5.0.0",
-    "purescript-generics-rep": "^5.4.0",
-    "purescript-effect": "^1.0.0",
-    "purescript-io": "^5.0.0"
+    "purescript-prelude": "^4.0.1",
+    "purescript-foldable-traversable": "^4.0.0",
+    "purescript-random": "^4.0.0",
+    "purescript-simple-json": "^4.0.0",
+    "purescript-affjax": "^6.0.0",
+    "purescript-generics-rep": "^6.0.0",
+    "purescript-data-algebrae": "^4.0.0",
+    "purescript-web-html": "^1.0.0",
+    "purescript-web-uievents": "^1.0.0",
+    "purescript-behaviors": "https://github.com/justinwoo/purescript-behaviors.git#compiler/0.12"
   },
-  "devDependencies": {
-    "purescript-console": "^3.0.0",
-    "purescript-debug": "^3.0.0",
-    "purescript-simple-json": "^2.0.1",
-    "purescript-quickcheck": "^4.7.0",
-    "purescript-spec": "^2.0.0",
-    "purescript-spec-quickcheck": "^2.0.0"
-  },
+  "devDependencies": {},
   "repository": {
     "type": "git",
     "url": "https://github.com/i-am-tom/purescript-panda.git"
