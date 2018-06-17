@@ -118,9 +118,9 @@ renderDynamic element watcher = do
           Types.Clear  → clearListener
 
           Types.SetTo nextProperty → do
-            property ← render element nextProperty
             clearListener
 
+            property  ← render element nextProperty
             canceller ← FRP.subscribe property.events subproducer.push
 
             let
@@ -140,11 +140,11 @@ render
   → Effect (Types.EventSystem input message state)
 
 render element = case _ of
-  Types.Fixed { key, value } → do
+  Types.Fixed { key, value } →
     renderStaticFixed element key value
 
-  Types.Producer { key, onEvent } → do
+  Types.Producer { key, onEvent } →
     renderStaticProducer element key onEvent
 
-  Types.Dynamic watcher → do
+  Types.Dynamic watcher →
     renderDynamic element watcher

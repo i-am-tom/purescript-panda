@@ -107,7 +107,7 @@ renderRow queen@{ name, age, origin, season }
       [ PP.watch \{ input } →
           case input of
             FilterTable str →
-              spy "hello?" if str `matches` queen
+              if str `matches` queen
                 then P.Clear
                 else P.SetTo (PP.className "hidden")
             _ →

@@ -505,7 +505,7 @@ collection tagName properties watcher
       , watcher
       }
 
-{- Here we go... -}
+---
 
 a ∷ Element
 a = make "a"
