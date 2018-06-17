@@ -1,11 +1,11 @@
-module Panda.Builders.Component.Collection where
+module Panda.Builders.HTML.Collection where
 
 import Data.Algebra.Array as Algebra
 import Data.Function      (on)
 import Data.Maybe         (fromJust)
 import Partial.Unsafe     (unsafePartial)
 
-import Panda.Prelude
+import Prelude
 
 -- | Sort a list of some Ord type, returning both the sorted list and the
 -- | required DOM operations to reflect this in some list of children.
@@ -60,4 +60,4 @@ sortWith
     }
 
 sortWith
-  = sortBy ∘ on compare
+  = sortBy <<< on compare

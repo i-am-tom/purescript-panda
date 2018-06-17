@@ -3,69 +3,66 @@ module Panda.Bootstrap
   ) where
 
 import Control.Alt            ((<|>))
-import Control.Monad.Eff.Ref  as Ref
-import DOM.Node.Types         as DOM
+import Effect.Ref             as Ref
+import Web.DOM.Internal.Types (Node) as Web
+import Web.DOM.Document       (Document) as Web
 import Effect                 (Effect)
 import FRP.Event              as FRP
 import Panda.Internal.Types   as Types
-import Panda.Render.Component as Component
+import Panda.Render.HTML      as HTML
 
-import Panda.Prelude
+import Prelude
 
--- | Given a Panda application, bootstrap the entire thing, wiring up the event
--- | systems as appropriate, and return the possibly-generated event system
--- | along with the node to be attached to the DOM.
+-- | "Bootstrap" a component by rendering it to a DOM node, and producing its
+-- | "Controller" set. This produces all the functions needed to interact with
+-- | a Panda component - we can `input` updates to control it, listen for
+-- | outgoing `events`, and even `destroy` the component entirely.
 
 bootstrap
-  ∷ ∀ update state event
-  . DOM.Document
-  → Types.Application update state event
+  ∷ ∀ input output message state
+  . Web.Document
+  → Types.Component input output message state
   → Effect
-      { node   ∷ DOM.Node
-      , system ∷ Maybe (Types.EventSystem update state event)
+      { node    ∷ Web.Node
+      , update  ∷ input → Effect Unit
+      , events  ∷ FRP.Event output
+      , destroy ∷ Effect Unit
       }
 
-bootstrap document app = do
-  result ← Component.render document (bootstrap document) app.view
+bootstrap document { view, subscription, initial, update } = do
+  result@{ system, node } ← HTML.render document (bootstrap document) view
 
-  case result.system of
-    Nothing →
-      -- Applications that are either totally static (_or_ produce events
-      -- without reading updates) don't need any sort of event system.
-      pure { node: result.node, system: Nothing }
+  stateRef ← Ref.new initial.state
+  external ← FRP.create
 
-    Just (Types.EventSystem system) → do
-       -- We could do this with a stream (and originally did!), but it's much
-       -- more performant to model that stream with a mutable reference.
-      stateRef ← effToEffect (Ref.newRef app.initial.state)
+  let 
+    events ∷ FRP.Event message
+    events = subscription <|> system.events
 
-      let
-        events ∷ FRP.Event event
-        events = app.subscription <|> system.events
+  cancel ← FRP.subscribe events \message → do
+    state ← Ref.read stateRef
 
-      cancel ← effToEffect $ FRP.subscribe events \event → effectToEff do
-        state ← effToEffect (Ref.readRef stateRef)
+    -- When a "message" is raised by the body, we call the supplied update
+    -- function with an "emitter" (to trigger external events), a "dispatcher"
+    -- (to update internal state and view), and the message in question, along
+    -- with the state at that moment.
+    { message, state } # update external.push \callback → do
+      mostRecentState ← Ref.read stateRef
+      let new@{ state } = callback mostRecentState
 
-        -- Every time an event is raised in the front end, that can trigger any
-        -- number of updates from the app's `update` function. So, we supply
-        -- that function with a callback that pipes each generated update
-        -- through `handleUpdate` in the event system.
-        { event, state } # app.update \callback → do
-          mostRecentState ← effToEffect (Ref.readRef stateRef)
-          let new@{ state } = callback mostRecentState
+      Ref.write state stateRef
+      system.handleUpdate new
 
-          effToEffect (Ref.writeRef stateRef state)
-          system.handleUpdate new
+  system.handleUpdate initial
 
-      system.handleUpdate app.initial
+  pure
+    { node
+    , update: \input → do
+        state ← Ref.read stateRef -- Is this a hack?
+        system.handleUpdate { input, state }
 
-      pure $ result
-        { system
-            = Just
-            ∘ Types.EventSystem
-            $ system
-                { cancel = do
-                    system.cancel
-                    effToEffect cancel
-                }
-        }
+    , events: external.event
+    , destroy: do
+        system.cancel
+        cancel
+    }

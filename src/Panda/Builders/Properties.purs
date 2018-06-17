@@ -108,11 +108,13 @@ import Panda.Builders.Property.Producers as Producers
 import Panda.Builders.Property.Watchers  as Watchers
 
 -- | A fully-polymorphic property.
+
 type StaticProperty
-  = ∀ update state event
-  . Types.Property update state event
+  = ∀ message update state
+  . Types.Property message update state
 
 -- | Make a property.
+
 make ∷ String → String → StaticProperty
 make key setting
   = Types.Fixed

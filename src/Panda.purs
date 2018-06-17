@@ -1,65 +1,68 @@
 module Panda
   ( module ExportedTypes
   , runApplicationInBody
-
-  , Updater
   ) where
 
-import DOM.HTML                   (window) as DOM
-import DOM.HTML.Document          (body) as DOM
-import DOM.HTML.Types             (htmlDocumentToDocument, htmlElementToNode) as DOM
-import DOM.HTML.Window            (document) as DOM
-import DOM.Node.Node              (appendChild) as DOM
-import DOM.Node.Types             (Node) as DOM
-import Effect                     (Effect)
-import Panda.Bootstrap            (bootstrap)
-import Panda.Internal.Types       as Types
-import Panda.Internal.Types       (Application, ShouldUpdate(..)) as ExportedTypes
+import Data.Maybe             (Maybe(..), maybe)
+import Data.Traversable       (traverse)
+import Effect                 (Effect)
+import FRP.Event              (Event) as FRP
+import Panda.Bootstrap        (bootstrap)
+import Panda.Internal.Types   (Component, Updater, ShouldUpdate(..)) as ExportedTypes
+import Web.DOM.Internal.Types (Node) as Web
+import Web.DOM.Node           (appendChild) as Web
+import Web.HTML               (window) as Web
+import Web.HTML.HTMLDocument  (body, toDocument) as Web
+import Web.HTML.HTMLElement   (toNode) as Web
+import Web.HTML.Window        (document) as Web
 
-import Panda.Prelude
+import Prelude
 
--- | A little convenient alias to make your signatures shorter. Note that it is
--- | only an alias, so it will be expanded in error messages. If that _does_
--- | happen, chances are that one or more of your types for `update`, `state`,
--- | and `event` are wrong.
+-- | When a component has been rendered, the following controlls will be
+-- | returned. 
 
-type Updater update state event
-  = ((state → { update ∷ update, state ∷ state }) → Effect Unit)
-  → { event ∷ event, state ∷ state }
-  → Effect Unit
+type Controller input output
+  = { destroy ∷ Effect Unit
+    , events  ∷ FRP.Event output
+    , update  ∷ input → Effect Unit
+    }
 
--- | Run a Panda application inside the <body> tag, effectively taking over the
--- | entire page. If this _isn't_ what you want to do, `runApplicationInNode`
--- | is a better choice. The result of this is an event system, which allows
--- | you to push information into the Panda application from outside.
+-- | Run an application on the `body` element of the page. For most serious use
+-- | cases, this is probably a bit more than you want: as with React, it's
+-- | generally advised that you attach your application to an element _within_
+-- | the DOM.
 
 runApplicationInBody
-  ∷ ∀ update state event
-  . Types.Application update state event
-  → Effect (Maybe (Types.EventSystem update state event))
+  ∷ ∀ input output message state
+  . ExportedTypes.Component input output message state
+  → Effect (Maybe (Controller input output))
 
-runApplicationInBody configuration = do
-  body ← effToEffect $ DOM.window >>= DOM.document >>= DOM.body
+runApplicationInBody configuration
+  = Web.window >>= Web.document >>= Web.body >>= case _ of
+      Just body → do
+        controller ← runApplicationInNode configuration (Web.toNode body)
+        pure (Just controller)
 
-  body # maybe (pure Nothing)
-    ( runApplicationInNode configuration
-    ∘ DOM.htmlElementToNode
-    )
+      Nothing →
+        pure Nothing
 
--- | Run a Panda application inside a given DOM node. The result of this is an
--- | event system, which allows you to push information into the Panda
--- | application from outside.
+-- | Run an application within a particular node. Using `ref` within React, we
+-- | can embed a Panda application within a React structure, and use some basic
+-- | tricks to wire it up to a higher-up event system.
 
 runApplicationInNode
-  ∷ ∀ update state event
-  . Types.Application update state event
-  → DOM.Node
-  → Effect (Maybe (Types.EventSystem update state event))
+  ∷ ∀ input output message state
+  . ExportedTypes.Component input output message state
+  → Web.Node
+  → Effect (Controller input output)
 
 runApplicationInNode configuration parent = do
-  document ← effToEffect (DOM.window >>= DOM.document)
-  let document' = DOM.htmlDocumentToDocument document
-  { system, node } ← bootstrap document' configuration
+  document ← Web.window >>= Web.document
+  let document' = Web.toDocument document
 
-  effToEffect (DOM.appendChild node parent) $> system
+  { destroy, events, update, node }
+      ← bootstrap document' configuration
+
+  _ ← Web.appendChild node parent
+  pure { destroy, events, update }
 

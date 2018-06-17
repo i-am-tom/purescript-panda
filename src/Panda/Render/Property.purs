@@ -1,198 +1,143 @@
 module Panda.Render.Property where
 
 import Control.Plus              (empty)
-import Control.Monad.Eff.Ref     as Ref
-import DOM.Event.EventTarget     (addEventListener, eventListener, removeEventListener) as DOM
-import DOM.Event.Types           (Event, EventType) as DOM
-import DOM.HTML.Event.EventTypes as DOM.Events
-import DOM.Node.Element          (removeAttribute, setAttribute) as DOM
-import DOM.Node.Types            (Element, elementToEventTarget) as DOM
+import Data.Foldable             (traverse_)
+import Data.Maybe                (Maybe(..))
 import Data.String               (drop, toLower)
 import Effect                    (Effect)
+import Effect.Ref                as Ref
 import FRP.Event                 (create, subscribe) as FRP
 import Panda.Internal.Types      as Types
-import Unsafe.Coerce             (unsafeCoerce)
+import Web.DOM.Element           (removeAttribute, setAttribute, toEventTarget) as Web
+import Web.DOM.Internal.Types    (Element) as Web
+import Web.Event.Event           (Event, EventType) as Web
+import Web.Event.EventTarget     (eventListener, addEventListener, removeEventListener) as Web
 
-import Panda.Prelude
+import Web.UIEvent.MouseEvent.EventTypes    (click, dblclick, mousedown, mouseenter, mouseleave, mousemove, mouseout, mouseover, mouseup) as Web.Events
+import Web.UIEvent.KeyboardEvent.EventTypes (keydown, keyup) as Web.Events
+import Web.HTML.Event.EventTypes            (blur, change, error, focus, input, submit) as Web.Events
+import Web.HTML.Event.DragEvent.EventTypes  (drag, dragend, dragenter, dragleave, dragover, dragstart, drop) as Web.Events
 
--- | The producers can be converted into `EventType`, allowing for use in event
--- | listeners.
+import Prelude
 
-producerToEventType ∷ Types.Producer → DOM.EventType
+producerToEventType ∷ Types.Producer → Web.EventType
 producerToEventType = case _ of
-  Types.OnBlur          → DOM.Events.blur
-  Types.OnChange        → DOM.Events.change
-  Types.OnClick         → DOM.Events.click
-  Types.OnDoubleClick   → DOM.Events.dblclick
-  Types.OnDrag          → DOM.Events.drag
-  Types.OnDragEnd       → DOM.Events.dragend
-  Types.OnDragEnter     → DOM.Events.dragenter
-  Types.OnDragLeave     → DOM.Events.dragleave
-  Types.OnDragOver      → DOM.Events.dragover
-  Types.OnDragStart     → DOM.Events.dragstart
-  Types.OnDrop          → DOM.Events.drop
-  Types.OnError         → DOM.Events.error
-  Types.OnFocus         → DOM.Events.focus
-  Types.OnInput         → DOM.Events.input
-  Types.OnKeyDown       → DOM.Events.keydown
-  Types.OnKeyPress      → DOM.Events.keypress
-  Types.OnKeyUp         → DOM.Events.keyup
-  Types.OnMouseDown     → DOM.Events.mousedown
-  Types.OnMouseEnter    → DOM.Events.mouseenter
-  Types.OnMouseLeave    → DOM.Events.mouseleave
-  Types.OnMouseMove     → DOM.Events.mousemove
-  Types.OnMouseOut      → DOM.Events.mouseout
-  Types.OnMouseOver     → DOM.Events.mouseover
-  Types.OnMouseUp       → DOM.Events.mouseup
-  Types.OnScroll        → DOM.Events.scroll
-  Types.OnSubmit        → DOM.Events.submit
-  Types.OnTransitionEnd → DOM.Events.transitionend
-
--- | Convert a producer to the string passed to `addEventListener` and
--- | `removeEventListener`.
-
-producerToString ∷ Types.Producer → String
-producerToString
-  = toLower
-  ∘ drop 2
-  ∘ show
-
--- | Effectfully add an event listener to a DOM node.
-
-addEventListener
-  ∷ Types.Producer
-  → DOM.Element
-  → (DOM.Event → Effect Unit)
-  → Effect Unit
-
-addEventListener producer element listener
-  = effToEffect (DOM.addEventListener eType eListener false eTarget)
-  where
-    eListener = (unsafeCoerce DOM.eventListener) listener
-    eType     = producerToEventType producer
-    eTarget   = DOM.elementToEventTarget element
-
--- | Effectfully remove an event listener from a DOM node.
-
-removeEventListener
-  ∷ Types.Producer
-  → DOM.Element
-  → (DOM.Event → Effect Unit)
-  → Effect Unit
-
-removeEventListener producer element listener
-  = effToEffect (DOM.removeEventListener eType eListener false eTarget)
-  where
-    eListener = (unsafeCoerce DOM.eventListener) listener
-    eTarget   = DOM.elementToEventTarget element
-    eType     = producerToEventType producer
-
--- | Render a fixed static property to an element.
+  Types.OnBlur          → Web.Events.blur
+  Types.OnChange        → Web.Events.change
+  Types.OnClick         → Web.Events.click
+  Types.OnDoubleClick   → Web.Events.dblclick
+  Types.OnDrag          → Web.Events.drag
+  Types.OnDragEnd       → Web.Events.dragend
+  Types.OnDragEnter     → Web.Events.dragenter
+  Types.OnDragLeave     → Web.Events.dragleave
+  Types.OnDragOver      → Web.Events.dragover
+  Types.OnDragStart     → Web.Events.dragstart
+  Types.OnDrop          → Web.Events.drop
+  Types.OnError         → Web.Events.error
+  Types.OnFocus         → Web.Events.focus
+  Types.OnInput         → Web.Events.input
+  Types.OnKeyDown       → Web.Events.keydown
+  Types.OnKeyUp         → Web.Events.keyup
+  Types.OnMouseDown     → Web.Events.mousedown
+  Types.OnMouseEnter    → Web.Events.mouseenter
+  Types.OnMouseLeave    → Web.Events.mouseleave
+  Types.OnMouseMove     → Web.Events.mousemove
+  Types.OnMouseOut      → Web.Events.mouseout
+  Types.OnMouseOver     → Web.Events.mouseover
+  Types.OnMouseUp       → Web.Events.mouseup
+  Types.OnSubmit        → Web.Events.submit
 
 renderStaticFixed
-  ∷ ∀ update state event
-  . DOM.Element
+  ∷ ∀ input message state
+  . Web.Element
   → String
   → String
-  → Effect (Maybe (Types.EventSystem update state event))
+  → Effect (Types.EventSystem input message state)
 
 renderStaticFixed element key value = do
-  effToEffect (DOM.setAttribute key value element)
+  Web.setAttribute key value element
 
-  pure ∘ Just $ Types.EventSystem
-    { cancel: effToEffect (DOM.removeAttribute key element)
+  pure
+    { cancel: Web.removeAttribute key element
     , events: empty
     , handleUpdate: \_ → pure unit
     }
 
--- | Render a fixed event-producing property from an element.
-
 renderStaticProducer
-  ∷ ∀ update state event
-  . DOM.Element
+  ∷ ∀ input message state
+  . Web.Element
   → Types.Producer
-  → (DOM.Event → Maybe event)
-  → Effect (Maybe (Types.EventSystem update state event))
+  → (Web.Event → Maybe message)
+  → Effect (Types.EventSystem input message state)
 
 renderStaticProducer element key onEvent = do
-  { push, event } ← effToEffect FRP.create
+  { push, event: events } ← FRP.create
 
-  let handler = traverse_ (map effToEffect push) ∘ onEvent
-  addEventListener key element handler
+  let handler = traverse_ push <<< onEvent
+      eTarget = Web.toEventTarget element
+      eType   = producerToEventType key
 
-  pure ∘ Just $ Types.EventSystem
-    { cancel: removeEventListener key element handler
-    , events: event
+  eListener <- Web.eventListener handler
+  Web.addEventListener eType eListener false eTarget
+
+  pure
+    { cancel: Web.removeEventListener eType eListener false eTarget
+    , events
     , handleUpdate: \_ → pure unit
     }
 
--- | Render a dynamic property that both produces events and listens for
--- | environmental changes.
-
 renderDynamic
-  ∷ ∀ update state event
-  . DOM.Element
-  → ( { update ∷ update, state ∷ state }
-    → Types.ShouldUpdate (Types.Property update state event)
+  ∷ ∀ input message state
+  . Web.Element
+  → ( { input ∷ input, state ∷ state }
+    → Types.ShouldUpdate (Types.Property input message state)
     )
-  → Effect (Maybe (Types.EventSystem update state event))
+  → Effect (Types.EventSystem input message state)
 
 renderDynamic element watcher = do
-  subproducer ← effToEffect FRP.create
-  propertyRef ← effToEffect (Ref.newRef Nothing)
+  subproducer ← FRP.create
+  propertyRef ← Ref.new Nothing
 
-  pure ∘ Just $ Types.EventSystem
-    { cancel: do
-        current ← effToEffect (Ref.readRef propertyRef)
-
-        for_ current \(Types.EventSystem { cancel }) →
-          cancel
+  pure
+    { cancel: Ref.read propertyRef >>= case _ of
+        Just { cancel } → cancel
+        Nothing         → pure unit
 
     , events: subproducer.event
-    , handleUpdate: \update → do
+    , handleUpdate: \input → do
         let
-          clearListener = do
-            eventSystem ← effToEffect (Ref.readRef propertyRef)
-
-            for_ eventSystem \(Types.EventSystem { cancel }) → do
-              effToEffect (Ref.writeRef propertyRef Nothing)
+          clearListener = Ref.read propertyRef >>= case _ of
+            Just { cancel } → do
+              Ref.write Nothing propertyRef
               cancel
 
-        case watcher update of
-          Types.Ignore →
-            pure unit
+            Nothing → pure unit
 
-          Types.Clear →
-            clearListener
+        case watcher input of
+          Types.Ignore → pure unit
+          Types.Clear  → clearListener
 
           Types.SetTo nextProperty → do
-            property ← render element nextProperty
             clearListener
 
-            for_ property \(Types.EventSystem system) → do
-              canceller
-                ← effToEffect
-                $ FRP.subscribe system.events
-                $ subproducer.push
+            property  ← render element nextProperty
+            canceller ← FRP.subscribe property.events subproducer.push
 
-              let
-                updated
-                  = Just $ Types.EventSystem system
-                      { cancel = system.cancel *> effToEffect canceller
-                      }
+            let
+              system' = Just property
+                { cancel = do
+                    property.cancel
+                    canceller
+                }
 
-              effToEffect (Ref.writeRef propertyRef updated)
+            Ref.write system' propertyRef
     }
 
--- | Given an element, along with some property DSL value, render the
--- | calculated property to the element, which may involve some handling of
--- | event listeners.
-
 render
-  ∷ ∀ update state event
-  . DOM.Element
-  → Types.Property update state event
-  → Effect (Maybe (Types.EventSystem update state event))
+  ∷ ∀ input message state
+  . Web.Element
+  → Types.Property input message state
+  → Effect (Types.EventSystem input message state)
 
 render element = case _ of
   Types.Fixed { key, value } →

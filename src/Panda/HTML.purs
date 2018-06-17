@@ -3,26 +3,29 @@ module Panda.HTML
   , module Exports
   ) where
 
-import Panda.Builders.Components as Builders
-import Panda.Internal.Types      (Component (..), ComponentUpdate) as Exports
-import Panda.Internal.Types      as Types
+import Data.Maybe (Maybe)
+import Panda.Internal.Types as Types
 
-import Panda.Prelude
+import Prelude
+
+-- | Exports from the PH namespace.
+
+import Panda.Builders.HTML  as Builders
+import Panda.Internal.Types (HTML(..), HTMLUpdate) as Exports
 
 -- | Embed an application into a component, allowing for it to exist in a
 -- | larger application. This also gives us the opportunity to filter out
 -- | events and updates in which we're not so interested.
 
 delegate
-  ∷ ∀ update subupdate state substate event subevent
-  . { update ∷ update   → Maybe subupdate
-    , state  ∷ state    → substate
-    , event  ∷ subevent → Maybe event
+  ∷ ∀ input message state subinput suboutput submessage substate
+  . { input  ∷ input     → Maybe subinput
+    , output ∷ suboutput → Maybe message
     }
-  → Types.Application subupdate substate subevent
-  → Types.Component update state event
+  → Types.Component subinput suboutput submessage substate
+  → Types.HTML input message state
 
 delegate focus application
   = Types.Delegate
-  ∘ Types.mkComponentDelegateX
-  $ Types.ComponentDelegate { application, focus }
+  $ Types.mkHTMLDelegateX
+  $ Types.HTMLDelegate { application, focus }

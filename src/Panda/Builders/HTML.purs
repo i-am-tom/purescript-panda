@@ -1,4 +1,4 @@
-module Panda.Builders.Components
+module Panda.Builders.HTML
   ( module Collection
 
   , a
@@ -434,55 +434,55 @@ module Panda.Builders.Components
   , wbr_
   ) where
 
-import Panda.Internal.Types                as Types
-import Panda.Builders.Component.Collection as Collection
+import Panda.Internal.Types           as Types
+import Panda.Builders.HTML.Collection as Collection
 
 -- | A fully-polymorphic component (and therefore either an element or text).
 
 type Element
-  = ∀ update state event
-  . Array (Types.Property update state event)
-  → Array (Types.Component update state event)
-  → Types.Component update state event
+  = ∀ input message state
+  . Array (Types.Property input message state)
+  → Array (Types.HTML input message state)
+  → Types.HTML input message state
 
 -- | A fully-polymorphic component with no properties.
 
 type ElementNoProperties
-  = ∀ update state event
-  . Array (Types.Component update state event)
-  → Types.Component update state event
+  = ∀ input message state
+  . Array (Types.HTML input message state)
+  → Types.HTML input message state
 
 -- | A fully-polymorphic component with no children.
 
 type SelfClosingElement
-  = ∀ update state event
-  . Array (Types.Property update state event)
-  → Types.Component update state event
+  = ∀ input message state
+  . Array (Types.Property input message state)
+  → Types.HTML input message state
 
 -- | A fully-polymorphic component with no children or properties.
 
 type SelfClosingElementNoProperties
-  = ∀ update state event
-  . Types.Component update state event
+  = ∀ input message state
+  . Types.HTML input message state
 
 -- | A fully-polymorphic container component.
 
 type Collection
-  = ∀ update state event
-  . Array (Types.Property update state event)
-  → ( { update ∷ update, state ∷ state }
-    → Array (Types.ComponentUpdate update state event)
+  = ∀ input message state
+  . Array (Types.Property input message state)
+  → ( { input ∷ input, state ∷ state }
+    → Array (Types.HTMLUpdate input message state)
     )
-  → Types.Component update state event
+  → Types.HTML input message state
 
 -- | A fully-polymorphic container component with no properties.
 
 type CollectionNoProperties
-  = ∀ update state event
-  . ( { update ∷ update, state ∷ state }
-    → Array (Types.ComponentUpdate update state event)
+  = ∀ input message state
+  . ( { input ∷ input, state ∷ state }
+    → Array (Types.HTMLUpdate input message state)
     )
-  → Types.Component update state event
+  → Types.HTML input message state
 
 -- | Make an element from its component parts.
 
@@ -505,7 +505,7 @@ collection tagName properties watcher
       , watcher
       }
 
-{- Here we go... -}
+---
 
 a ∷ Element
 a = make "a"
@@ -1642,9 +1642,9 @@ template_ ∷ ElementNoProperties
 template_ = template []
 
 text
-  ∷ ∀ update state event
+  ∷ ∀ input message state
   . String
-  → Types.Component update state event
+  → Types.HTML input message state
 text
   = Types.Text
 
