@@ -2,13 +2,18 @@
   "name": "purescript-panda",
   "description": "Black-and-white rendering.",
   "dependencies": {
-    "pscid": "^2.5.1",
-    "pulp": "^12.0.1",
-    "purescript": "^0.11.7"
+    "bower": "^1.8.4",
+    "pscid": "^2.5.3",
+    "pulp": "^12.3.0",
+    "purescript": "^0.12.0"
   },
   "scripts": {
+    "prepublish": "bower install",
     "pscid": "pscid",
     "tags": "purs docs --format ctags './**/*.purs' > tags",
-    "test": "pulp build -m Test.Main --to test/dist.js -I test"
+    "test": "pulp run -I test -m Test.Main"
+  },
+  "devDependencies": {
+    "jsdom": "^11.11.0"
   }
 }

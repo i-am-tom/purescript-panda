@@ -2,6 +2,9 @@ module Panda.Builders.Properties
   ( module Producers
   , module Watchers
 
+  , FormEncodingType (..)
+  , Target           (..)
+
   , accept
   , action
   , align
@@ -103,9 +106,13 @@ module Panda.Builders.Properties
   , width
   ) where
 
+import Data.HTTP.Method as HTTP
+
 import Panda.Internal.Types              as Types
 import Panda.Builders.Property.Producers as Producers
 import Panda.Builders.Property.Watchers  as Watchers
+
+import Prelude ((<<<))
 
 -- | A fully-polymorphic property.
 
@@ -137,8 +144,10 @@ alt = make "alt"
 async ∷ String → StaticProperty
 async = make "async"
 
-autocomplete ∷ String → StaticProperty
-autocomplete = make "autocomplete"
+autocomplete ∷ Boolean → StaticProperty
+autocomplete
+    = make "autocomplete"
+  <<< if _ then "on" else "off"
 
 autofocus ∷ String → StaticProperty
 autofocus = make "autofocus"
@@ -221,8 +230,16 @@ disabled = make "disabled"
 download ∷ String → StaticProperty
 download = make "download"
 
-enctype ∷ String → StaticProperty
-enctype = make "enctype"
+data FormEncodingType
+  = XWWWFormUrlEncoded
+  | MultipartFormData
+  | TextPlain
+
+enctype ∷ FormEncodingType → StaticProperty
+enctype = make "enctype" <<< case _ of
+  XWWWFormUrlEncoded → "x-www-form-urlencoded"
+  MultipartFormData  → "multipart/form-data"
+  TextPlain          → "text/plain"
 
 for ∷ String → StaticProperty
 for = make "for"
@@ -296,8 +313,10 @@ minlength = make "minlength"
 media ∷ String → StaticProperty
 media = make "media"
 
-method ∷ String → StaticProperty
-method = make "method"
+method ∷ HTTP.Method → StaticProperty
+method = make "method" <<< case _ of
+  HTTP.POST → "POST"
+  _         → "GET"
 
 min ∷ String → StaticProperty
 min = make "min"
@@ -311,8 +330,10 @@ muted = make "muted"
 name ∷ String → StaticProperty
 name = make "name"
 
-novalidate ∷ String → StaticProperty
-novalidate = make "novalidate"
+novalidate ∷ Boolean → StaticProperty
+novalidate
+    = make "novalidate"
+  <<< if _ then "novalidate" else ""
 
 open ∷ String → StaticProperty
 open = make "open"
@@ -404,8 +425,18 @@ step = make "step"
 summary ∷ String → StaticProperty
 summary = make "summary"
 
-target ∷ String → StaticProperty
-target = make "target"
+data Target
+  = Self
+  | Blank
+  | Parent
+  | Top
+
+target ∷ Target → StaticProperty
+target = make "target" <<< case _ of
+  Self   → "_self"
+  Blank  → "_blank"
+  Parent → "_parent"
+  Top    → "_top"
 
 type_ ∷ String → StaticProperty
 type_ = make "type"

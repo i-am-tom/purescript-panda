@@ -1,15 +1,9 @@
 module Test.Main where
 
-import Effect
 import Data.Foldable (sequence_)
-import Prelude (Unit)
-
-import Test.Example.DataTable as DataTable
-
-examples :: Array (Effect Unit)
-examples
-  = [ DataTable.main
-    ]
+import Effect        (Effect)
+import Prelude
 
 main ∷ Effect Unit
-main = sequence_ examples
+main = do
+  pure unit

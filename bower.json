@@ -19,7 +19,9 @@
     "purescript-web-uievents": "^1.0.0",
     "purescript-behaviors": "https://github.com/justinwoo/purescript-behaviors.git#compiler/0.12"
   },
-  "devDependencies": {},
+  "devDependencies": {
+    "purescript-debug": "^4.0.0"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/i-am-tom/purescript-panda.git"

@@ -1,75 +1,84 @@
 module Test.Example.Form where
 
-import Panda          as P
+import Data.HTTP.Method as HTTP
+import Data.Maybe       (Maybe(..))
+import Data.String      (joinWith)
+
 import Panda.HTML     as PH
 import Panda.Property as PP
 
-import Effect.Aff (Aff)
-import Effect.Aff as Aff
-
-import Control.Plus       (empty)
-import Data.Maybe         (Maybe(..), maybe)
-import Data.Time.Duration (Milliseconds(..))
 import Prelude
 
-type TextInputProperties'
-  = { className :: String
-    , buffer    :: Milliseconds
+data FormEvent
+  = FormOnBlur
+  | FormOnChange
+  | FormOnFocus
+  | FormOnInput
+  | FormOnSubmit
+
+type FormProperties' input message
+  = { autocomplete ∷ Boolean
+    , classes      ∷ Array String
+    , enctype      ∷ PP.FormEncodingType
+    , method       ∷ HTTP.Method
+    , name         ∷ String
+    , novalidate   ∷ Boolean
+    , onEvent      ∷ FormEvent → Maybe message
+    , target       ∷ PP.Target
     }
 
-defaultProperties' :: TextInputProperties'
-defaultProperties'
-  = { className: ""
-    , buffer: Milliseconds 0.0
+newtype FormProperties input message
+  = FormProperties (FormProperties' input message)
+
+form'
+  ∷ ∀ input message state
+  . FormProperties input message
+  → Array (PH.HTML input message state)
+  → PH.HTML input message state
+
+form' (FormProperties properties) children
+  = PH.form
+      [ PP.autocomplete properties.autocomplete
+      , PP.className (joinWith " " properties.classes)
+      , PP.enctype properties.enctype
+      , PP.method properties.method
+      , PP.name properties.name
+      , PP.novalidate properties.novalidate
+      , PP.target properties.target
+
+      , PP.onBlur        \_ → properties.onEvent FormOnBlur
+      , PP.onChange      \_ → properties.onEvent FormOnChange
+      , PP.onFocus       \_ → properties.onEvent FormOnFocus
+      , PP.onInput       \_ → properties.onEvent FormOnInput
+      , PP.onSubmit      \_ → properties.onEvent FormOnSubmit
+      ]
+
+      children
+
+initialProperties ∷ ∀ input message. FormProperties' input message
+initialProperties
+  = { autocomplete: false
+    , classes: []
+    , enctype: PP.XWWWFormUrlEncoded
+    , method: HTTP.GET
+    , name: ""
+    , novalidate: false
+    , target: PP.Self
+
+    , onEvent: \_ → Nothing
     }
 
-newtype TextInputProperties
-  = TextInputProperties TextInputProperties'
+form
+  ∷ ∀ input message state
+  . ( FormProperties' input message
+    → FormProperties' input message
+    )
+  → Array (PH.HTML input message state)
+  → PH.HTML input message state
 
-data TextInputEvent
-  = TextInputUpdated String
-  | TextInputFocused
-  | TextInputBlurred
-  | TextInputBufferReset
-
-newtype TextInputUpdate
-  = UpdateTextInputContents String
-
-textInput (TextInputProperties properties)
-  = { view:
-        PH.label
-          [ PP.className properties.className
-          ]
-
-          [ PH.input
-              [ PP.className $ properties.className <> "__field"
-              , PP.onChange' $ pure <<< TextInputUpdated
-              , PP.onBlur    \_ -> Just TextInputBlurred
-              , PP.onFocus   \_ -> Just TextInputFocused
-              ]
-          ]
-
-    , initial:
-        { state: pure unit
-        , update: UpdateTextInputContents ""
-        }
-
-    , update: \emit dispatch { event, state: buffer } ->
-        case event of
-          TextInputUpdated contents -> do
-            _ <- buffer # maybe (pure unit) identity--Aff.killFiber
-
-            dispatch \_ ->
-              { update: Nothing
-              , state: Aff.delay properties.buffer {-*>
-                  liftEffect (emit (TextInputUpdateComplete contents))-}
-              }
-
-          unbufferedEvent ->
-            emit unbufferedEvent
-  }
-
-mkTextInput endo
-  = textInput
-  $ TextInputProperties
-  $ endo defaultProperties'
+form endo
+  = form' properties
+  where
+    properties
+      = FormProperties
+      $ endo initialProperties

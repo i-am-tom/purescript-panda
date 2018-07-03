@@ -3,7 +3,7 @@ module Panda.HTML
   , module Exports
   ) where
 
-import Data.Maybe (Maybe)
+import Data.Maybe           (Maybe)
 import Panda.Internal.Types as Types
 
 import Prelude
