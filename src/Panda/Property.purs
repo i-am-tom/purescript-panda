@@ -8,4 +8,4 @@ module Panda.Property
 -- | by proxy.
 
 import Panda.Builders.Properties as Builders
-import Panda.Internal.Types      (Producer(..), Property(..)) as ExportedTypes
+import Panda.Internal.Types      ( Producer(..), Property(..), ShouldUpdate(..)) as ExportedTypes

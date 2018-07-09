@@ -3,7 +3,6 @@ module Panda.Render.Property where
 import Control.Plus              (empty)
 import Data.Foldable             (traverse_)
 import Data.Maybe                (Maybe(..))
-import Data.String               (drop, toLower)
 import Effect                    (Effect)
 import Effect.Ref                as Ref
 import FRP.Event                 (create, subscribe) as FRP

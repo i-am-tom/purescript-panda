@@ -3,6 +3,7 @@ module Panda.Bootstrap
   ) where
 
 import Control.Alt            ((<|>))
+import Data.Maybe             (maybe)
 import Effect.Ref             as Ref
 import Web.DOM.Internal.Types (Node) as Web
 import Web.DOM.Document       (Document) as Web
@@ -35,7 +36,7 @@ bootstrap document { view, subscription, initial, update } = do
   stateRef ← Ref.new initial.state
   external ← FRP.create
 
-  let 
+  let
     events ∷ FRP.Event message
     events = subscription <|> system.events
 
@@ -48,10 +49,12 @@ bootstrap document { view, subscription, initial, update } = do
     -- with the state at that moment.
     { message, state } # update external.push \callback → do
       mostRecentState ← Ref.read stateRef
-      let new@{ state } = callback mostRecentState
 
-      Ref.write state stateRef
-      system.handleUpdate new
+      let new@{ state } = callback mostRecentState
+      Ref.write new.state stateRef
+
+      new.input # maybe (pure unit) \input →
+        system.handleUpdate { input, state }
 
   system.handleUpdate initial
 

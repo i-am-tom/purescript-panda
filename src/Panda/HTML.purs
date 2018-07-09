@@ -1,6 +1,8 @@
 module Panda.HTML
   ( module Builders
   , module Exports
+
+  , delegate
   ) where
 
 import Data.Maybe           (Maybe)

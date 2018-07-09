@@ -1,11 +1,12 @@
 module Panda.Builders.Properties
-  ( module Producers
-  , module Watchers
+  ( module Watchers
+  , module Producers
 
   , FormEncodingType (..)
   , Target           (..)
 
   , accept
+  , accesskey
   , action
   , align
   , alt
@@ -112,7 +113,8 @@ import Panda.Internal.Types              as Types
 import Panda.Builders.Property.Producers as Producers
 import Panda.Builders.Property.Watchers  as Watchers
 
-import Prelude ((<<<))
+import Data.String.CodeUnits (singleton)
+import Prelude               ((<<<))
 
 -- | A fully-polymorphic property.
 
@@ -132,6 +134,9 @@ make key setting
 accept ∷ String → StaticProperty
 accept = make "accept"
 
+accesskey ∷ Char → StaticProperty
+accesskey = make "accesskey" <<< singleton
+
 action ∷ String → StaticProperty
 action = make "action"
 
@@ -144,10 +149,8 @@ alt = make "alt"
 async ∷ String → StaticProperty
 async = make "async"
 
-autocomplete ∷ Boolean → StaticProperty
-autocomplete
-    = make "autocomplete"
-  <<< if _ then "on" else "off"
+autocomplete ∷ String → StaticProperty
+autocomplete = make "autocomplete"
 
 autofocus ∷ String → StaticProperty
 autofocus = make "autofocus"
@@ -224,8 +227,10 @@ defer = make "defer"
 dirname ∷ String → StaticProperty
 dirname = make "dirname"
 
-disabled ∷ String → StaticProperty
-disabled = make "disabled"
+disabled ∷ Boolean → StaticProperty
+disabled
+    = make "disabled"
+  <<< if _ then "disabled" else ""
 
 download ∷ String → StaticProperty
 download = make "download"
@@ -365,8 +370,10 @@ readonly = make "readonly"
 rel ∷ String → StaticProperty
 rel = make "rel"
 
-required ∷ String → StaticProperty
-required = make "required"
+required ∷ Boolean → StaticProperty
+required
+    = make "required"
+  <<< if _ then "required" else ""
 
 reversed ∷ String → StaticProperty
 reversed = make "reversed"

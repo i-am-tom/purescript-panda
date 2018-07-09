@@ -4,10 +4,7 @@ import Control.Alternative      ((<|>))
 import Control.Plus             (empty)
 import Data.Algebra.Array       as Algebra.Array
 import Data.Foldable            (foldl)
-import Data.Generic.Rep         (class Generic)
-import Data.Generic.Rep.Show    (genericShow)
 import Data.Maybe               (Maybe)
-import Data.String              as String
 import Effect                   (Effect)
 import FRP.Event                (Event) as FRP
 import Web.Event.Internal.Types (Event) as DOM
@@ -20,9 +17,20 @@ import Prelude
 -- | you have input/output/message/state wrong or mixed up.
 
 type Updater input output message state
-  = (output → Effect Unit)
-  → ((state → { input ∷ input, state ∷ state }) → Effect Unit)
-  → { message ∷ message, state ∷ state }
+  = ( output → Effect Unit )
+
+  → ( ( state
+      → { input ∷ Maybe input
+        , state ∷ state
+        }
+      )
+    → Effect Unit
+    )
+
+  → { message ∷ message
+    , state   ∷ state
+    }
+
   → Effect Unit
 
 -- | A component in Panda is a unit capable of running as an independent
@@ -187,6 +195,7 @@ derive instance eqProducer  ∷ Eq Producer
 
 -- | Convert a Producer to its html attribute name.
 
+producerToAttribute ∷ Producer → String
 producerToAttribute = case _ of
   OnBlur        → "blur"
   OnChange      → "change"

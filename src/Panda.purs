@@ -3,14 +3,14 @@ module Panda
   , runApplicationInBody
   ) where
 
-import Data.Maybe             (Maybe(..), maybe)
-import Data.Traversable       (traverse)
+import Data.Maybe             (Maybe(..))
 import Effect                 (Effect)
 import FRP.Event              (Event) as FRP
 import Panda.Bootstrap        (bootstrap)
-import Panda.Internal.Types   (Component, Updater, ShouldUpdate(..)) as ExportedTypes
+import Panda.Internal.Types   (Component, Updater) as ExportedTypes
 import Web.DOM.Internal.Types (Node) as Web
 import Web.DOM.Node           (appendChild) as Web
+import Web.Event.Event        (Event, preventDefault) as ExportedTypes
 import Web.HTML               (window) as Web
 import Web.HTML.HTMLDocument  (body, toDocument) as Web
 import Web.HTML.HTMLElement   (toNode) as Web
@@ -19,7 +19,7 @@ import Web.HTML.Window        (document) as Web
 import Prelude
 
 -- | When a component has been rendered, the following controlls will be
--- | returned. 
+-- | returned.
 
 type Controller input output
   = { destroy ∷ Effect Unit
