@@ -27,7 +27,7 @@ data Message
 
 -- | We export from the SignUp module as a delegate, so when we embed the html
 -- | elsewhere, we only really need to say how to convert our inputs into its
--- | inputs, and its inputs into our messages. These are the only channels for
+-- | inputs, and its outputs into our messages. These are the only channels for
 -- | communication between a delegate and its parent.
 
 view
